@@ -1,0 +1,7 @@
+string query
+---
+bool success
+int32 error_code
+string error_string
+
+string completion
