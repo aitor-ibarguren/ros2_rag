@@ -1,0 +1,3 @@
+[submodule "llm_wrappers"]
+	path = llm_wrappers
+	url = https://github.com/aitor-ibarguren/llm_wrappers.git
