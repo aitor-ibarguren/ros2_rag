@@ -1,5 +1,0 @@
-bart_wrapper
-faiss_wrapper
-flan_t5_wrapper
-gpt2_wrapper
-tests
