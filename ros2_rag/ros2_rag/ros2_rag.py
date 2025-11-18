@@ -1,7 +1,6 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, State, TransitionCallbackReturn
 from ros2_rag._ros2_rag_class import ROS2RAGClass
-from ros2_rag_msgs.srv import Query
 
 
 class ROS2RAGNode(LifecycleNode):
@@ -20,12 +19,28 @@ class ROS2RAGNode(LifecycleNode):
             "Transitioning to 'inactive'"
         )
 
-        # Declare PSD class
-        self._ros2_rag = ROS2RAGClass(self.get_logger())
+        # Declare ROS2 RAG class
+        self._ros2_rag = ROS2RAGClass(self)
 
-        # Finish transition
-        self.get_logger().info("Transition finished!")
-        return TransitionCallbackReturn.SUCCESS
+        # Define LLM-RAG params
+        params = {}
+        params['generator_type'] = 'flan_t5'
+        params['generator_loading'] = 'pretrained'
+
+        # Configure
+        try:
+            if self._ros2_rag.configure(params):
+                # Successful configuration
+                self.get_logger().info('Successful configuration 🛠️')
+                return TransitionCallbackReturn.SUCCESS
+            else:
+                # Error in configuration
+                self.get_logger().error('❌ Failure in configuration')
+                return TransitionCallbackReturn.FAILURE 
+        except Exception as e:
+            # Error in configuration
+            self.get_logger().error(f"❌ Failure in configuration: {e}")
+            return TransitionCallbackReturn.FAILURE
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info(
@@ -33,11 +48,11 @@ class ROS2RAGNode(LifecycleNode):
             "Transitioning to 'unconfigured'"
         )
 
-        # Destroy PSD class
+        # Destroy ROS2 RAG class
         del self._ros2_rag
 
         # Finish transition
-        self.get_logger().info("Transition finished!")
+        self.get_logger().info("Successful cleanup")
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
@@ -46,13 +61,41 @@ class ROS2RAGNode(LifecycleNode):
             "Transitioning to 'active'"
         )
 
-        # Initialize services
-        self._load_data_srv = self.create_service(
-            Query, self.get_name()+'/query', self._ros2_rag.query)
+        # Activate
+        try:
+            if self._ros2_rag.activate():
+                # Successful activation
+                self.get_logger().info('Successful activation 🚀')
+                return TransitionCallbackReturn.SUCCESS
+            else:
+                # Error in activation
+                self.get_logger().error('❌ Failure in activation')
+                return TransitionCallbackReturn.FAILURE
+        except Exception as e:
+            # Error in activation
+            self.get_logger().error(f"❌ Failure in activation: {e}")
+            return TransitionCallbackReturn.FAILURE
 
-        # Finish transition
-        self.get_logger().info("Transition finished!")
-        return TransitionCallbackReturn.SUCCESS
+    def on_deactivate(self, state: State) -> TransitionCallbackReturn:
+        self.get_logger().info(
+            f"Node '{self.get_name()}' is in state '{state.label}'. "
+            "Transitioning to 'configured'"
+        )
+
+        # Deactivate
+        try:
+            if self._ros2_rag.deactivate():
+                # Successful deactivation
+                self.get_logger().info('Successful deactivation')
+                return TransitionCallbackReturn.SUCCESS
+            else:
+                # Error in deactivation
+                self.get_logger().error('❌ Failure in deactivation')
+                return TransitionCallbackReturn.FAILURE
+        except Exception as e:
+            # Error in deactivation
+            self.get_logger().error(f"❌ Failure in deactivation: {e}")
+            return TransitionCallbackReturn.FAILURE
 
     def on_shutdown(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info(
