@@ -1,6 +1,7 @@
 from typing import Dict
 
-from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import FlanT5Type, FlanT5Wrapper
+from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
+                                                          FlanT5Wrapper)
 from rclpy.lifecycle import LifecycleNode
 from ros2_rag_msgs.srv import Query
 

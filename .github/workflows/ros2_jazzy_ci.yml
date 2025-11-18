@@ -15,13 +15,27 @@ jobs:
         with:
           submodules: recursive
 
-      # 2. Set up ROS 2 Jazzy
+      # 2. Fix ROS 2 expired repo key
+      - name: Fix expired ROS key (Open Robotics)
+        run: |
+          sudo apt-get update || true
+          sudo apt-get install -y curl gnupg2
+          sudo rm -f /etc/apt/trusted.gpg.d/ros.asc || true
+          sudo rm -f /etc/apt/trusted.gpg || true
+          curl -fsSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+            | gpg --dearmor \
+            | sudo tee /usr/share/keyrings/ros-archive-keyring.gpg > /dev/null
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu noble main" \
+            | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+          sudo apt-get update
+
+      # 3. Set up ROS 2 Jazzy
       - name: Set up ROS 2 Jazzy
         uses: ros-tooling/setup-ros@v0.4
         with:
           required-ros-distributions: jazzy
 
-      # 3. Install Python dependencies for llm_wrappers requirements.txt
+      # 4. Install Python dependencies for llm_wrappers requirements.txt
       - name: Install pip dependencies
         run: |
           python3 -m pip install --upgrade pip
@@ -29,7 +43,7 @@ jobs:
               pip install -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
-      # 4. Build & test using colcon
+      # 5. Build & test using colcon
       - name: Build and Test (colcon)
         uses: ros-tooling/action-ros-ci@v0.3
         with:
@@ -37,7 +51,7 @@ jobs:
           package-names: |
             llm_wrappers
 
-      # 5. Upload logs on failure
+      # 6. Upload logs on failure
       - name: Upload colcon test logs
         if: failure()
         uses: actions/upload-artifact@v4
