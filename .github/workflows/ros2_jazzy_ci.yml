@@ -1,0 +1,46 @@
+name: ROS2 Jazzy CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      # 1. Checkout repo & submodules
+      - name: Checkout repository (recursive)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # 2. Set up ROS 2 Jazzy
+      - name: Set up ROS 2 Jazzy
+        uses: ros-tooling/setup-ros@v0.4
+        with:
+          required-ros-distributions: jazzy
+
+      # 3. Install Python dependencies for llm_wrappers requirements.txt
+      - name: Install pip dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
+              pip install -r ros2_rag/llm_wrappers/requirements.txt
+          fi
+
+      # 4. Build & test using colcon
+      - name: Build and Test (colcon)
+        uses: ros-tooling/action-ros-ci@v0.3
+        with:
+          target-ros2-distro: jazzy
+          package-names: |
+            llm_wrappers
+
+      # 5. Upload logs on failure
+      - name: Upload colcon test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colcon-logs
+          path: ros_ws/log
