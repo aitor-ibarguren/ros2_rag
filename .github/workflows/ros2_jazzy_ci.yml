@@ -20,6 +20,11 @@ jobs:
         uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: jazzy
+      
+      - name: Debug workspace contents
+        run: |
+          echo "===== ros_ws/src ====="
+          ls -R ros_ws/src || true
 
       # 3. Install Python dependencies for llm_wrappers requirements.txt
       # - name: Install pip dependencies
