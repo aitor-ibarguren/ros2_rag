@@ -8,7 +8,7 @@ package_name = 'ros2_rag'
 setup(
     name=package_name,
     version='0.1.0',
-    packages=[package_name, 'llm_wrappers.flan_t5_wrapper'],
+    packages=[package_name, 'ros2_rag.llm_wrappers.flan_t5_wrapper'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
