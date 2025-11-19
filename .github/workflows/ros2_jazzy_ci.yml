@@ -20,18 +20,34 @@ jobs:
         uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: jazzy
-      
-      - name: Debug workspace contents
+
+      - name: Aggressive disk cleanup
         run: |
-          echo "===== ros_ws/src ====="
-          ls -R || true
+          echo "=== BEFORE CLEANUP ==="
+          df -h
+
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/lib/node_modules || true
+          sudo rm -rf /var/lib/docker || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf ~/.cache || true
+          sudo rm -rf /var/cache/apt/* || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+
+          pip cache purge || true
+
+          echo "=== AFTER CLEANUP ==="
+          df -h
 
       # 3. Install Python dependencies for llm_wrappers requirements.txt
       - name: Install pip dependencies
         run: |
           python3 -m pip install --upgrade pip
           if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
-              pip install -r ros2_rag/llm_wrappers/requirements.txt
+              pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
       # 4. Build & test using colcon
