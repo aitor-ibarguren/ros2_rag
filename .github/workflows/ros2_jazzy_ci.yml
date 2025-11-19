@@ -21,7 +21,8 @@ jobs:
         with:
           required-ros-distributions: jazzy
 
-      - name: Aggressive disk cleanup
+      # 3. Disk cleanup
+      - name: Disk cleanup
         run: |
           echo "=== BEFORE CLEANUP ==="
           df -h
@@ -42,7 +43,7 @@ jobs:
           echo "=== AFTER CLEANUP ==="
           df -h
 
-      # 3. Install Python dependencies for llm_wrappers requirements.txt
+      # 4. Install Python dependencies for llm_wrappers requirements.txt
       - name: Install pip dependencies
         run: |
           python3 -m pip install --upgrade pip
@@ -50,7 +51,7 @@ jobs:
               pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
-      # 4. Build & test using colcon
+      # 5. Build & test using colcon
       - name: Build and Test (colcon)
         uses: ros-tooling/action-ros-ci@v0.3
         with:
@@ -58,7 +59,7 @@ jobs:
           vcs-repo-file-url: ros2_rag.repos
           package-name: ros2_rag   
 
-      # 5. Upload logs on failure
+      # 6. Upload logs on failure
       - name: Upload colcon test logs
         if: failure()
         uses: actions/upload-artifact@v4
