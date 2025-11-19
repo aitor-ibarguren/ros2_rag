@@ -34,8 +34,7 @@ jobs:
         uses: ros-tooling/action-ros-ci@v0.3
         with:
           target-ros2-distro: jazzy
-          package-names: |
-            llm_wrappers
+          package-name: llm_wrappers
 
       # 5. Upload logs on failure
       - name: Upload colcon test logs
