@@ -27,12 +27,12 @@ jobs:
           ls -R || true
 
       # 3. Install Python dependencies for llm_wrappers requirements.txt
-      # - name: Install pip dependencies
-      #   run: |
-      #     python3 -m pip install --upgrade pip
-      #     if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
-      #         pip install -r ros2_rag/llm_wrappers/requirements.txt
-      #     fi
+      - name: Install pip dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
+              pip install -r ros2_rag/llm_wrappers/requirements.txt
+          fi
 
       # 4. Build & test using colcon
       - name: Build and Test (colcon)
