@@ -42,7 +42,7 @@ class ROS2RAGClass:
         self._logger.info('Query service ready ✅')
 
         return True
-    
+
     def deactivate(self) -> bool:
         # Shutdown services
         self._node.destroy_service(self._load_data_srv)
