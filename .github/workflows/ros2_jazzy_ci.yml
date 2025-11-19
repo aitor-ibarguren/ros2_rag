@@ -24,7 +24,7 @@ jobs:
       - name: Debug workspace contents
         run: |
           echo "===== ros_ws/src ====="
-          ls -R ros_ws/src || true
+          ls -R || true
 
       # 3. Install Python dependencies for llm_wrappers requirements.txt
       # - name: Install pip dependencies
