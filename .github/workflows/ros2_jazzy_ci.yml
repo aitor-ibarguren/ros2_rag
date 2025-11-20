@@ -65,6 +65,7 @@ jobs:
           cd ../ros_ws
           rosdep update
           rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
+          pip install --user launch_testing
 
       # 7. Build with colcon
       - name: Build with colcon
