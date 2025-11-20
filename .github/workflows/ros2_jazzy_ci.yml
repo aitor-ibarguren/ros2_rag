@@ -51,14 +51,28 @@ jobs:
               pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
-      # 5. Build & test using colcon
-      - name: Build and Test (colcon)
-        uses: ros-tooling/action-ros-ci@v0.3
-        with:
-          target-ros2-distro: jazzy
-          vcs-repo-file-url: ros2_rag.repos
-          package-name: ros2_rag
-          pytest-args: "--ignore=llm_wrappers"
+      - name: Create workspace & copy repo files
+        run: |
+          mkdir -p ros_ws/src
+          cp $GITHUB_WORKSPACE/* ros_ws/src
+
+      - name: Initialize submodules inside ros2_rag
+        working-directory: ros_ws/src/ros2_rag
+        run: |
+          git submodule update --init --recursive
+
+      - name: Install dependencies
+        run: |
+          sudo rosdep init || true
+          rosdep update
+          cd ros_ws
+          rosdep install --from-paths src --ignore-src -y --rosdistro jazzy
+
+      - name: Build with colcon
+        run: |
+          cd ros_ws
+          source /opt/ros/jazzy/setup.bash
+          colcon build --event-handlers console_direct+
 
       # 6. Upload logs on failure
       - name: Upload colcon test logs
