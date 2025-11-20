@@ -65,7 +65,7 @@ jobs:
         run: |
           cd ros_ws
           rosdep update
-          rosdep install --from-paths src -y --ignore-src
+          rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
 
       - name: Build with colcon
         run: |
