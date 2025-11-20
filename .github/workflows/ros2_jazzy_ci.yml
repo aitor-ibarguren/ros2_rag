@@ -65,7 +65,6 @@ jobs:
           cd ../ros_ws
           rosdep update
           rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
-          pip install --user launch_testing
 
       # 7. Build with colcon
       - name: Build with colcon
@@ -78,6 +77,7 @@ jobs:
       - name: Colcon test
         run: |
           cd ../ros_ws
+          source /opt/ros/jazzy/setup.bash
           colcon test --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
       # 6. Upload logs on failure
