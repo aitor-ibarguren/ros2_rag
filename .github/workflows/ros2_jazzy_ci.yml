@@ -54,7 +54,7 @@ jobs:
       - name: Create workspace & copy repo files
         run: |
           mkdir -p ros_ws/src
-          cp $GITHUB_WORKSPACE/* ros_ws/src
+          cp -r $GITHUB_WORKSPACE/* ros_ws/src
 
       - name: Initialize submodules inside ros2_rag
         working-directory: ros_ws/src/ros2_rag
