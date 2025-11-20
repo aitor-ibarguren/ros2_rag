@@ -8,7 +8,13 @@ package_name = 'ros2_rag'
 setup(
     name=package_name,
     version='0.1.0',
-    packages=find_packages(),
+    packages=find_packages() + [
+        'llm_wrappers.flan_t5_wrapper'
+    ],
+    # package_data={
+    #     'ros2_rag': ['../llm_wrappers/**/*'],  # install files inside the ros2_rag package
+    # },
+
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -18,8 +24,8 @@ setup(
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
     ],
     install_requires=[
-      'setuptools',
-      'flan_t5_wrapper'
+        'setuptools',
+        'flan_t5_wrapper'
     ],
     tests_require=['pytest'],
     zip_safe=True,
