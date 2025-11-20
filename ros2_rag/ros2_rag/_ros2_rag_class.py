@@ -1,10 +1,4 @@
 from typing import Dict
-import sys
-import os
-
-# this_dir = os.path.dirname(os.path.realpath(__file__))
-# llm_path = os.path.join(this_dir, '..', 'llm_wrappers')
-# sys.path.insert(0, os.path.abspath(llm_path))
 
 from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
                                                           FlanT5Wrapper)
