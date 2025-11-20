@@ -53,8 +53,10 @@ jobs:
 
       - name: Create workspace & copy repo files
         run: |
+          cd ..
           mkdir -p ros_ws/src
-          cp -r ros2_rag ros_ws/src
+          cp -r $GITHUB_WORKSPACE/ros2_rag ros_ws/src
+          cp -r $GITHUB_WORKSPACE/ros2_rag_msgs ros_ws/src
 
       # - name: Initialize submodules inside ros2_rag
       #   working-directory: ros_ws/src/ros2_rag
@@ -63,13 +65,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd ros_ws
+          cd ../ros_ws
           rosdep update
           rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
 
       - name: Build with colcon
         run: |
-          cd ros_ws
+          cd ../ros_ws
           source /opt/ros/jazzy/setup.bash
           colcon build
 

@@ -5,6 +5,9 @@ import launch_testing
 import pytest
 import rclpy
 from launch_ros.actions import LifecycleNode
+from lifecycle_msgs.srv import GetState, ChangeState
+from lifecycle_msgs.msg import Transition
+import time
 
 
 @pytest.mark.launch_test
@@ -39,11 +42,23 @@ class TestLifecycleLaunch(unittest.TestCase):
         rclpy.shutdown()
 
     def setUp(self):
-        self.node = rclpy.create_node('test_lifecycle_launch')
-        self.node.get_logger().info("Node 'test_lifecycle_launch' initialized")
+        self._node = rclpy.create_node('test_lifecycle_launch')
+        self._node.get_logger().info("Node 'test_lifecycle_launch' initialized")
 
     def tearDown(self):
-        self.node.destroy_node()
+        self._node.destroy_node()
 
     def test_publishes_pose(self):
-        self.assertTrue(True)
+        # Create lifecycle client
+        client = self._node.create_client(ChangeState, 'ros2_rag/change_state')
+
+        # Wait until node is ready
+        while not client.wait_for_service(timeout_sec=1.0):
+            print("Waiting for lifecycle node service...")
+
+        req = ChangeState.Request()
+        req.transition.id = Transition.TRANSITION_CONFIGURE
+        future = client.call_async(req)
+        rclpy.spin_until_future_complete(self._node, future)
+
+        self.assertTrue(future.result().success)
