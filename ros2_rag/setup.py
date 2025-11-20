@@ -11,9 +11,8 @@ setup(
     packages=find_packages() + [
         'llm_wrappers.flan_t5_wrapper'
     ],
-    # package_data={
-    #     'ros2_rag': ['../llm_wrappers/**/*'],  # install files inside the ros2_rag package
-    # },
+    package_dir={
+        'llm_wrappers.flan_t5_wrapper': 'llm_wrappers/flan_t5_wrapper'},
 
     data_files=[
         ('share/ament_index/resource_index/packages',
