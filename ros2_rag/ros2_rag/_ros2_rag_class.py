@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
                                                           FlanT5Wrapper)
@@ -22,7 +22,29 @@ class ROS2RAGClass:
     def __del__(self):
         self._logger.info('Destroying ROS2RAGClass instance...')
 
-    def configure(self, params: Dict[str, str]) -> bool:
+    def get_params(self) -> Tuple[bool, Dict[str, str]]:
+        params = {}
+
+        # Declare parameters
+        self._node.declare_parameter('generator_type', 'flan_t5')
+        self._node.declare_parameter('generator_loading', 'pretrained')
+
+        # Get parameter values
+        params['generator_type'] = self._node.get_parameter(
+            'generator_type').value
+        params['generator_loading'] = self._node.get_parameter(
+            'generator_loading').value
+
+        return True, params
+
+    def configure(self) -> bool:
+        # Get params
+        res, params = self.get_params()
+
+        if not res:
+            self.get_logger().error('❌ Error retrieving parameters')
+            return False
+
         # Instantiate generator
         if params['generator_type'] == 'flan_t5':
             self._generator = FlanT5Wrapper(FlanT5Type.SMALL)

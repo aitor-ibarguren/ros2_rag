@@ -23,14 +23,9 @@ class ROS2RAGNode(LifecycleNode):
         # Declare ROS2 RAG class
         self._ros2_rag = ROS2RAGClass(self)
 
-        # Define LLM-RAG params
-        params = {}
-        params['generator_type'] = 'flan_t5'
-        params['generator_loading'] = 'pretrained'
-
         # Configure
         try:
-            if self._ros2_rag.configure(params):
+            if self._ros2_rag.configure():
                 # Successful configuration
                 self.get_logger().info('Successful configuration 🛠️')
                 return TransitionCallbackReturn.SUCCESS
