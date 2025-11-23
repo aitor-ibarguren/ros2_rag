@@ -1,0 +1,4 @@
+ros2_rag:
+  ros__parameters:
+    generator_type: 'flan_t5'
+    generator_loading: 'pretrained'

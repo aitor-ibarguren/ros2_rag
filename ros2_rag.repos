@@ -1,0 +1,10 @@
+repositories:
+  ros2_rag:
+    type: git
+    url: https://github.com/aitor-ibarguren/ros2_rag.git
+    version: 4-add-workflows
+
+  ros2_rag/ros2_rag/llm_wrappers:
+    type: git
+    url: https://github.com/aitor-ibarguren/llm_wrappers.git
+    version: main

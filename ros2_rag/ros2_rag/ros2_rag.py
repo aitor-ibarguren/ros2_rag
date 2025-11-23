@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, State, TransitionCallbackReturn
+
 from ros2_rag._ros2_rag_class import ROS2RAGClass
 
 
@@ -11,7 +12,7 @@ class ROS2RAGNode(LifecycleNode):
         # Declare parameters
         self.declare_parameter('auto_activate', True)
 
-        self.get_logger().info("Class ROS2RAGNode initialized")
+        self.get_logger().info('Class ROS2RAGNode initialized')
 
     def on_configure(self, state: State) -> TransitionCallbackReturn:
         self.get_logger().info(
@@ -22,21 +23,16 @@ class ROS2RAGNode(LifecycleNode):
         # Declare ROS2 RAG class
         self._ros2_rag = ROS2RAGClass(self)
 
-        # Define LLM-RAG params
-        params = {}
-        params['generator_type'] = 'flan_t5'
-        params['generator_loading'] = 'pretrained'
-
         # Configure
         try:
-            if self._ros2_rag.configure(params):
+            if self._ros2_rag.configure():
                 # Successful configuration
                 self.get_logger().info('Successful configuration 🛠️')
                 return TransitionCallbackReturn.SUCCESS
             else:
                 # Error in configuration
                 self.get_logger().error('❌ Failure in configuration')
-                return TransitionCallbackReturn.FAILURE 
+                return TransitionCallbackReturn.FAILURE
         except Exception as e:
             # Error in configuration
             self.get_logger().error(f"❌ Failure in configuration: {e}")
@@ -52,7 +48,7 @@ class ROS2RAGNode(LifecycleNode):
         del self._ros2_rag
 
         # Finish transition
-        self.get_logger().info("Successful cleanup")
+        self.get_logger().info('Successful cleanup')
         return TransitionCallbackReturn.SUCCESS
 
     def on_activate(self, state: State) -> TransitionCallbackReturn:
@@ -104,7 +100,7 @@ class ROS2RAGNode(LifecycleNode):
         )
 
         # Finish transition
-        self.get_logger().info("Transition finished!")
+        self.get_logger().info('Transition finished!')
         return TransitionCallbackReturn.SUCCESS
 
 

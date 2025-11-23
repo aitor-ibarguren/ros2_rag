@@ -1,0 +1,89 @@
+name: ROS2 Jazzy CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      # 1. Checkout repo & submodules
+      - name: Checkout repository (recursive)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # 2. Set up ROS 2 Jazzy
+      - name: Set up ROS 2 Jazzy
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: jazzy
+
+      # 3. Disk cleanup
+      - name: Disk cleanup
+        run: |
+          echo "=== BEFORE CLEANUP ==="
+          df -h
+
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/local/lib/node_modules || true
+          sudo rm -rf /var/lib/docker || true
+          sudo rm -rf /usr/local/share/powershell || true
+          sudo rm -rf /usr/local/share/chromium || true
+          sudo rm -rf ~/.cache || true
+          sudo rm -rf /var/cache/apt/* || true
+          sudo rm -rf /var/lib/apt/lists/* || true
+
+          pip cache purge || true
+
+          echo "=== AFTER CLEANUP ==="
+          df -h
+
+      # 4. Install Python dependencies for llm_wrappers requirements.txt
+      - name: Install pip dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
+              pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
+          fi
+
+      # 5. Create workspace & copy files from the clone repo
+      - name: Create workspace & copy files
+        run: |
+          cd ..
+          mkdir -p ros_ws/src
+          cp -r $GITHUB_WORKSPACE/ros2_rag ros_ws/src
+          cp -r $GITHUB_WORKSPACE/ros2_rag_msgs ros_ws/src
+
+      # 6. Install dependencies with rosdep
+      - name: Install dependencies
+        run: |
+          cd ../ros_ws
+          rosdep update
+          rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
+
+      # 7. Build with colcon
+      - name: Build with colcon
+        run: |
+          cd ../ros_ws
+          source /opt/ros/jazzy/setup.bash
+          colcon build
+        
+      # 8. Testing with colcon
+      - name: Colcon test
+        run: |
+          cd ../ros_ws
+          source /opt/ros/jazzy/setup.bash
+          colcon test --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
+
+      # 6. Upload logs on failure
+      - name: Upload colcon test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: colcon-logs
+          path: ros_ws/log
