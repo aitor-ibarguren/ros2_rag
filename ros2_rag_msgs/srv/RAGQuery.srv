@@ -1,4 +1,5 @@
 string query
+string query_template
 ---
 bool success
 int32 error_code

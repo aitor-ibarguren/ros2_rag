@@ -34,6 +34,12 @@ As mentioned previosly, the *ros2_rag* repository contains several base Python c
 git clone --recursive https://github.com/aitor-ibarguren/ros2_rag.git
 ```
 
+Additionally, it is also necessary to install the dependencies of *llm_wrappers* submodule. As Ubuntu 24.04 enforces PEP 668 (“externally managed environment”), the use of `--break-system-packages` pip installation flag is recommended:
+
+```bash
+pip install -r ./ros2_rag/ros2_rag/llw_wrappers/requirements.txt --break-system-packages
+```
+
 ## ROS2 RAG System Comfiguration
 
 The current implementation allows the configuration of several parameters of the RAG system. Specifically the parameters are listed below:
@@ -54,7 +60,8 @@ ros2_rag:
 
 The ROS2 RAG node offers the next services:
 
-* **/ros2_rag/query:** Service to query the RAG system, retrieving the completion.
+* **/ros2_rag/query:** Service to query the RAG system, generating the completion using only the LLM.
+* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base.
 
 # Dockerfile
 

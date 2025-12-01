@@ -120,8 +120,13 @@ def main():
 
     # Configure and activate node if required
     if auto_activate:
-        ros2_rag_node.trigger_configure()
-        ros2_rag_node.trigger_activate()
+        # Configure
+        res = ros2_rag_node.trigger_configure()
+
+        # Check if correct configuration
+        if res == TransitionCallbackReturn.SUCCESS:
+            # Activate
+            res = ros2_rag_node.trigger_activate()
 
     try:
         executor.spin()
