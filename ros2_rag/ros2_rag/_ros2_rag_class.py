@@ -1,11 +1,11 @@
 import os
 from typing import Dict, Tuple
 
-from llm_wrappers.bart_wrapper.bart_wrapper import (BARTType, BARTWrapper)
+from llm_wrappers.bart_wrapper.bart_wrapper import BARTType, BARTWrapper
 from llm_wrappers.faiss_wrapper.faiss_wrapper import FAISSWrapper
 from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
                                                           FlanT5Wrapper)
-from llm_wrappers.gpt2_wrapper.gpt2_wrapper import (GPT2Type, GPT2Wrapper)
+from llm_wrappers.gpt2_wrapper.gpt2_wrapper import GPT2Type, GPT2Wrapper
 from rclpy.lifecycle import LifecycleNode
 
 from ros2_rag_msgs.srv import LoadCsvData, Query, RAGQuery, SaveIndex
