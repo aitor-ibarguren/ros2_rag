@@ -40,28 +40,45 @@ Additionally, it is also necessary to install the dependencies of *llm_wrappers*
 pip install -r ./ros2_rag/ros2_rag/llw_wrappers/requirements.txt --break-system-packages
 ```
 
-## ROS2 RAG System Comfiguration
+## ROS2 RAG System Configuration
 
 The current implementation allows the configuration of several parameters of the RAG system. Specifically the parameters are listed below:
 
-* **generator_type:** Type of generator included in *Transformers* library.
+* **generator_family:** Family of generator included in *Transformers* library.
+* **generator_version:** Version of generator included in *Transformers* library.
 * **generator_loading:** Loading procedure for the generator.
+* **knowledge_base_path:** The path of the knowledge base. If the folder does not exists or is empty, the node will create a new index that can be stored in this folder or any other by means of a ROS2 service provided by the node.
 
 The next lines show a snippet of the *YAML* file defining the configuration of the ROS2 RAG node:
 
 ```yaml
 ros2_rag:
   ros__parameters:
-    generator_type: 'flan_t5'
+    generator_family: 'flan_t5'
+    generator_version: 'small'
     generator_loading: 'pretrained'
+    knowledge_base_path: '/home/ubuntu/knowledge_base'
 ```
+
+Additionally, as ROS2 RAG is implemented as a lifecycle node, the *auto_activate* launch argument (by default *false*) allows defining if the node configures and activates automatically.
 
 ## ROS2 RAG Services
 
 The ROS2 RAG node offers the next services:
 
 * **/ros2_rag/query:** Service to query the RAG system, generating the completion using only the LLM.
-* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base.
+* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is an snippet of a valid template:
+
+```text
+You are a helpful AI assistant.
+Use the context below to answer the user question.
+--- CONTEXT START ---
+%context%
+--- CONTEXT END ---
+--- QUESTION ---
+%query%
+--- ANSWER ---
+```
 
 # Dockerfile
 
