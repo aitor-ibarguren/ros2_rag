@@ -7,6 +7,7 @@ import pytest
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import LifecycleNode
+
 from ros2_rag_msgs.srv import LoadCsvData, SaveIndex
 
 
@@ -35,9 +36,9 @@ def generate_test_description():
     return (
         launch.LaunchDescription([
             node_under_test,
-            # Launch tests 5.0 s later
+            # Launch tests 30.0 s later
             launch.actions.TimerAction(
-                period=5.0, actions=[launch_testing.actions.ReadyToTest()]),
+                period=30.0, actions=[launch_testing.actions.ReadyToTest()]),
         ])
     )
 
