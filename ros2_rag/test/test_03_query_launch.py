@@ -11,12 +11,13 @@ from launch_ros.actions import LifecycleNode
 from ros2_rag_msgs.srv import Query, RAGQuery
 
 
-@pytest.mark.launch_test
+@pytest.mark.launch_test(timeout=30)
 def generate_test_description():
 
     # Load yaml
     yaml_path = os.path.join(
         get_package_share_directory('ros2_rag'),
+        'test',
         'config',
         'ros2_rag_params.yml'
     )
@@ -36,9 +37,9 @@ def generate_test_description():
     return (
         launch.LaunchDescription([
             node_under_test,
-            # Launch tests 30.0 s later
+            # Launch tests 10.0 s later
             launch.actions.TimerAction(
-                period=30.0, actions=[launch_testing.actions.ReadyToTest()]),
+                period=10.0, actions=[launch_testing.actions.ReadyToTest()]),
         ])
     )
 

@@ -247,7 +247,7 @@ class ROS2RAGClass:
             response.error_code = -1
             response.error_msg = 'Error saving index'
 
-            self._logger.error('❌' + response.error_msg)
+            self._logger.error('❌ ' + response.error_msg)
         else:
             response.success = True
             response.error_code = 0

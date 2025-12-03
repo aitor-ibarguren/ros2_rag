@@ -11,12 +11,13 @@ from launch_ros.actions import LifecycleNode
 from ros2_rag_msgs.srv import LoadCsvData, SaveIndex
 
 
-@pytest.mark.launch_test
+@pytest.mark.launch_test()
 def generate_test_description():
 
     # Load yaml
     yaml_path = os.path.join(
         get_package_share_directory('ros2_rag'),
+        'test',
         'config',
         'ros2_rag_params.yml'
     )
@@ -36,9 +37,9 @@ def generate_test_description():
     return (
         launch.LaunchDescription([
             node_under_test,
-            # Launch tests 30.0 s later
+            # Launch tests 10.0 s later
             launch.actions.TimerAction(
-                period=30.0, actions=[launch_testing.actions.ReadyToTest()]),
+                period=10.0, actions=[launch_testing.actions.ReadyToTest()]),
         ])
     )
 
@@ -73,8 +74,10 @@ class TestLifecycleLaunch(unittest.TestCase):
 
         # Fill request
         req = LoadCsvData.Request()
-        req.file_path = ('/home/ubuntu/ros2_ws/src/ros2_rag/ros2_rag/' +
-                         'test/data/shop_data.csv')
+        req.file_path = (os.path.join(
+            get_package_share_directory('ros2_rag'),
+            'test', 'data', 'shop_data.csv'
+        ))
         req.column_id = 'shop data'
         req.chunking = False
 
@@ -97,7 +100,7 @@ class TestLifecycleLaunch(unittest.TestCase):
 
         # Fill request
         req = SaveIndex.Request()
-        req.folder_path = ('/home/ubuntu/knowledge_base')
+        req.folder_path = ('/tmp/knowledge_base')
 
         future = save_index_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
