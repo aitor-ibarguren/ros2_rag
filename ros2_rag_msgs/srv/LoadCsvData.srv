@@ -1,0 +1,9 @@
+string file_path
+string column_id
+bool chunking
+int16 chunk_size
+int16 chunk_overlap
+---
+bool success
+int16 error_code
+string error_msg

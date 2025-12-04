@@ -1,0 +1,5 @@
+string folder_path
+---
+bool success
+int16 error_code
+string error_msg
