@@ -48,19 +48,37 @@ The current implementation allows the configuration of several parameters of the
 * **generator_version:** Version of generator included in *Transformers* library.
 * **generator_loading:** Loading procedure for the generator.
 * **knowledge_base_path:** The path of the knowledge base. If the folder does not exists or is empty, the node will create a new index that can be stored in this folder or any other by means of a ROS2 service provided by the node.
+* **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
+* **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
+* **top_p:** Value to control the token sampling. Usual values range from 1.0 (sampling from all tokens) to 0.8 (safe sampling), with a good balance between quality and creativity at 0.9.
 
 The next lines show a snippet of the *YAML* file defining the configuration of the ROS2 RAG node:
 
 ```yaml
 ros2_rag:
   ros__parameters:
-    generator_family: 'flan_t5'
+    generator_family: 'qwen'
     generator_version: 'small'
     generator_loading: 'pretrained'
     knowledge_base_path: '/home/ubuntu/knowledge_base'
+    max_new_tokens: 50
+    temperature: 0.5
+    top_p: 0.9
 ```
 
-Additionally, as ROS2 RAG is implemented as a lifecycle node, the *auto_activate* launch argument (by default *false*) allows defining if the node configures and activates automatically.
+The complete list of LLM models and versions is depicted in the next table:
+
+| Generator Family | Family tag | Generator versions & tags |
+| :--- | :--- | :--- |
+| **Deepseek** | `deepseek` |➤ DeepSeek R1 Distill Qwen 1.5B - `r1_distill_qwen_tiny`<br>➤ DeepSeek R1 Distill Qwen 7B - `r1_distill_qwen_base`<br>➤ DeepSeek R1 Distill Llama 8B - `r1_distill_llama_base`<br>➤ DeepSeek R1 Distill Qwen 14B - `r1_distill_qwen_large`<br>➤ DeepSeek R1 Distill Qwen 32B - `r1_distill_qwen_xl`<br>➤ DeepSeek R1 Distill Llama 70B - `r1_distill_llama_xl` |
+| **Flan T5** | `flan_t5` |➤ Flan T5 small - `small`<br>➤ Flan T5 base - `base`<br>➤ Flan T5 large - `large`<br>➤ Flan T5 XL - `xl`<br>➤ Flan T5 XXL - `xxl` |
+| **Qwen** | `qwen` |➤ Qwen 2.5 0.5B Instruct - `xtiny`<br>➤ Qwen 2.5 1.5B Instruct - `tiny`<br>➤ Qwen 2.5 3B Instruc - `small`<br>➤ Qwen 2.5 7B Instruct - `base`<br>➤ Qwen 2.5 14B Instruct - `large`<br>➤ Qwen 2.5 72B Instruct - `xl` |
+
+Additionally, as ROS2 RAG is implemented as a lifecycle node, the *auto_activate* launch argument (by default *false*) allows defining if the node configures and activates automatically, launching the node as:
+
+```bash
+ros2 launch ros2_rag ros2_rag auto_activate:=true
+```
 
 ## ROS2 RAG Services
 
@@ -72,12 +90,15 @@ The ROS2 RAG node offers the next services:
 ```text
 You are a helpful AI assistant.
 Use the context below to answer the user question.
---- CONTEXT START ---
+If the answer is not contained in the context, say "The question can not be answered".
+Respond only with the answer.
+
+CONTEXT:
 %context%
---- CONTEXT END ---
---- QUESTION ---
+  
+QUERY:
 %query%
---- ANSWER ---
+ANSWER:
 ```
 
 # Dockerfile

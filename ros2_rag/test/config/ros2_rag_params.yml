@@ -4,3 +4,6 @@ ros2_rag:
     generator_version: 'small'
     generator_loading: 'pretrained'
     knowledge_base_path: '/tmp/knowledge_base'
+    max_new_tokens: 50
+    temperature: 0.5
+    top_p: 0.9

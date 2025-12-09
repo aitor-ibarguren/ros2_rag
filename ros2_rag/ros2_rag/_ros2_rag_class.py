@@ -1,11 +1,12 @@
 import os
 from typing import Dict, Tuple
 
-from llm_wrappers.bart_wrapper.bart_wrapper import BARTType, BARTWrapper
+from llm_wrappers.deepseek_wrapper.deepseek_wrapper import (DeepseekType,
+                                                            DeepseekWrapper)
 from llm_wrappers.faiss_wrapper.faiss_wrapper import FAISSWrapper
 from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
                                                           FlanT5Wrapper)
-from llm_wrappers.gpt2_wrapper.gpt2_wrapper import GPT2Type, GPT2Wrapper
+from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
 from ros2_rag_msgs.srv import LoadCsvData, Query, RAGQuery, SaveIndex
@@ -20,9 +21,11 @@ class ROS2RAGClass:
 
         # Generator family/versions
         self._ALLOWED_GENERATORS = {
-            "flan_t5": ["small", "base", "large", "xl", "xxl"],
-            "bart": ["base", "large"],
-            "gpt2": ["base", "medium", "large", "xl"],
+            "qwen": ["xtiny", "tiny", "small", "base", "large", "xl"],
+            "deepseek": ["r1_distill_qwen_tiny", "r1_distill_qwen_base",
+                         "r1_distill_llama_base", "r1_distill_qwen_large",
+                         "r1_distill_qwen_xl", "r1_distill_llama_xl"],
+            "flan_t5": ["small", "base", "large", "xl", "xxl"]
         }
 
         # Init vars
@@ -38,10 +41,13 @@ class ROS2RAGClass:
         params = {}
 
         # Declare parameters
-        self._node.declare_parameter('generator_family', 'flan_t5')
+        self._node.declare_parameter('generator_family', 'qwen')
         self._node.declare_parameter('generator_version', 'small')
         self._node.declare_parameter('generator_loading', 'pretrained')
         self._node.declare_parameter('knowledge_base_path', '~/knowledge_base')
+        self._node.declare_parameter('max_new_tokens', 50)
+        self._node.declare_parameter('temperature', 0.5)
+        self._node.declare_parameter('top_p', 0.9)
 
         # Get parameter values
         params['generator_family'] = self._node.get_parameter(
@@ -52,6 +58,12 @@ class ROS2RAGClass:
             'generator_loading').value
         params['knowledge_base_path'] = self._node.get_parameter(
             'knowledge_base_path').value
+        params['max_new_tokens'] = self._node.get_parameter(
+            'max_new_tokens').value
+        params['temperature'] = self._node.get_parameter(
+            'temperature').value
+        params['top_p'] = self._node.get_parameter(
+            'top_p').value
 
         return True, params
 
@@ -67,6 +79,21 @@ class ROS2RAGClass:
             return False, ("Generator version '" + params['generator_version']
                            + "' unknown for family '" +
                            params['generator_family'] + "'")
+
+        # Check max new tokens is a positive int
+        if (not isinstance(params['max_new_tokens'], int) or
+                params['max_new_tokens'] < 1):
+            return False, ("Max. new tokens MUST be a positive integer")
+
+        # Check temperature is between 0.0 and 1.5
+        if (not isinstance(params['temperature'], (int, float)) or
+                params['temperature'] < 0.0 or params['temperature'] > 1.5):
+            return False, ("Temperature MUST be between 0.0 and 1.5")
+
+        # Check top P is between 0.0 and 1.0
+        if ((not isinstance(params['top_p'], (int, float))) or
+                params['top_p'] < 0.0 or params['top_p'] > 1.0):
+            return False, ("Top P MUST be between 0.0 and 1.0")
 
         return True, ''
 
@@ -150,18 +177,18 @@ class ROS2RAGClass:
             params['generator_family']].index(
                 params['generator_version'])
 
-        if params['generator_family'] == 'bart':
-            version = list(BARTType)[version_idx]
-            self._generator = BARTWrapper(list(BARTType)[version_idx])
-            self._logger.info(f'LLM model: BART - {version.name}')
+        if params['generator_family'] == 'deepseek':
+            version = list(DeepseekType)[version_idx]
+            self._generator = DeepseekWrapper(list(DeepseekType)[version_idx])
+            self._logger.info(f'LLM model: Deepseek - {version.name}')
         elif params['generator_family'] == 'flan_t5':
             version = list(FlanT5Type)[version_idx]
             self._generator = FlanT5Wrapper(list(FlanT5Type)[version_idx])
             self._logger.info(f'LLM model: Flan T5 - {version.name}')
-        elif params['generator_family'] == 'gpt2':
-            version = list(GPT2Type)[version_idx]
-            self._generator = GPT2Wrapper(list(GPT2Type)[version_idx])
-            self._logger.info(f'LLM model: GPT2 - {version.name}')
+        elif params['generator_family'] == 'qwen':
+            version = list(QwenType)[version_idx]
+            self._generator = QwenWrapper(list(QwenType)[version_idx])
+            self._logger.info(f'LLM model: QWEN - {version.name}')
 
         # Load generator
         if params['generator_loading'] == 'pretrained':
@@ -169,6 +196,15 @@ class ROS2RAGClass:
             self._generator.load_pretrained_model()
 
         self._logger.info('Model successfully loaded 🎯')
+
+        # Print generation params
+        self._logger.info('Generation parameters 🎛️')
+        self._max_new_tokens = params['max_new_tokens']
+        self._logger.info(f'► Max new tokens: {self._max_new_tokens}')
+        self._temperature = params['temperature']
+        self._logger.info(f'► Temperature: {self._temperature}')
+        self._top_p = params['top_p']
+        self._logger.info(f'► Top P: {self._top_p}')
 
         return True
 
@@ -262,9 +298,24 @@ class ROS2RAGClass:
 
         # Get completion
         completion = ''
-        res, completion = self._generator.generate(request.query)
+        res, completion = self._generator.generate(request.query,
+                                                   self._max_new_tokens,
+                                                   self._temperature,
+                                                   self._top_p)
 
         if res:
+            # Remove query if required
+            if request.return_answer_only:
+                completion = completion[len(request.query):]
+                if completion.startswith(" "):
+                    completion = completion[1:]
+
+            # Remove incomplete sentences if required
+            if request.return_answer_only is True:
+                last_dot = completion.rfind('.')
+                if last_dot != -1:
+                    completion = completion[:last_dot+1]
+
             response.completion = completion
             response.success = True
             response.error_code = 0
@@ -328,6 +379,17 @@ class ROS2RAGClass:
         res, contexts, _ = self._retriever.hybrid_search(
             [request.query], 5, 0.6)
 
+        # Check if context
+        if not res:
+            response.completion = ''
+            response.success = False
+            response.error_code = -3
+            response.error_msg = 'Error retrieving context'
+
+            self._logger.error('❌ ' + response.error_msg)
+
+            return response
+
         # Insert context
         augmented_prompt = request.query_template.replace('%context%',
                                                           "\n".join(
@@ -337,9 +399,24 @@ class ROS2RAGClass:
 
         # Get completion
         completion = ''
-        res, completion = self._generator.generate(augmented_prompt)
+        res, completion = self._generator.generate(augmented_prompt,
+                                                   self._max_new_tokens,
+                                                   self._temperature,
+                                                   self._top_p)
 
         if res:
+            # Remove query if required
+            if request.return_answer_only is True:
+                completion = completion[len(augmented_prompt):]
+                if completion.startswith(" "):
+                    completion = completion[1:]
+
+            # Remove incomplete sentences if required
+            if request.return_answer_only is True:
+                last_dot = completion.rfind('.')
+                if last_dot != -1:
+                    completion = completion[:last_dot+1]
+
             response.completion = completion
             response.success = True
             response.error_code = 0

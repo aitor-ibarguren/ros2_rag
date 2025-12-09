@@ -1,4 +1,7 @@
 string query
+
+bool return_only_answer
+bool remove_incomplete_sentences
 ---
 bool success
 int32 error_code

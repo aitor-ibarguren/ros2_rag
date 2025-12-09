@@ -9,16 +9,16 @@ setup(
     name=package_name,
     version='0.1.0',
     packages=find_packages() + [
-        'llm_wrappers.bart_wrapper',
+        'llm_wrappers.deepseek_wrapper',
         'llm_wrappers.faiss_wrapper',
         'llm_wrappers.flan_t5_wrapper',
-        'llm_wrappers.gpt2_wrapper'
+        'llm_wrappers.qwen_wrapper'
     ],
     package_dir={
-        'llm_wrappers.bart_wrapper': 'llm_wrappers/bart_wrapper',
+        'llm_wrappers.deepseek_wrapper': 'llm_wrappers/deepseek_wrapper',
         'llm_wrappers.faiss_wrapper': 'llm_wrappers/faiss_wrapper',
         'llm_wrappers.flan_t5_wrapper': 'llm_wrappers/flan_t5_wrapper',
-        'llm_wrappers.gpt2_wrapper': 'llm_wrappers/gpt2_wrapper'
+        'llm_wrappers.qwen_wrapper': 'llm_wrappers/qwen_wrapper'
     },
 
     data_files=[
