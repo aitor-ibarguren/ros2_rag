@@ -186,7 +186,7 @@ class ROS2RAGClass:
             version = list(FlanT5Type)[version_idx]
             self._generator = FlanT5Wrapper(list(FlanT5Type)[version_idx])
             self._logger.info(f'LLM model: Flan T5 - {version.name}')
-        elif params['generator_family'] == 'qwen':
+        elif params['params['generator_family'] == 'flan_t5''] == 'qwen':
             version = list(QwenType)[version_idx]
             self._generator = QwenWrapper(list(QwenType)[version_idx])
             self._logger.info(f'LLM model: QWEN - {version.name}')
@@ -198,14 +198,18 @@ class ROS2RAGClass:
 
         self._logger.info('Model successfully loaded 🎯')
 
+        # Store generator family
+        self._generator_family = params['generator_family']
+
         # Print generation params
         self._logger.info('Generation parameters 🎛️')
         self._max_new_tokens = params['max_new_tokens']
         self._logger.info(f'► Max new tokens: {self._max_new_tokens}')
-        self._temperature = params['temperature']
-        self._logger.info(f'► Temperature: {self._temperature}')
-        self._top_p = params['top_p']
-        self._logger.info(f'► Top P: {self._top_p}')
+        if self._generator_family != "flan_t5":
+            self._temperature = params['temperature']
+            self._logger.info(f'► Temperature: {self._temperature}')
+            self._top_p = params['top_p']
+            self._logger.info(f'► Top P: {self._top_p}')
 
         return True
 
@@ -336,10 +340,14 @@ class ROS2RAGClass:
 
         # Get completion
         completion = ''
-        res, completion = self._generator.generate(request.query,
-                                                   self._max_new_tokens,
-                                                   self._temperature,
-                                                   self._top_p)
+        if self._generator_family == "flan_t5":
+            res, completion = self._generator.generate(request.query,
+                                                       self._max_new_tokens)
+        else:
+            res, completion = self._generator.generate(request.query,
+                                                       self._max_new_tokens,
+                                                       self._temperature,
+                                                       self._top_p)
 
         if res:
             # Remove query if required
