@@ -101,6 +101,11 @@ QUERY:
 ANSWER:
 ```
 
+Both services include arguments to facilitate the RAG system queries:
+
+* *return_only_answer:* Removes the query text from the completion, returning only the answer to the query.
+* *remove_incomplete_sentences:* Removes last incomplete sentence if the completion does not finish with a dot character.
+
 # Dockerfile
 
 To facilitate the usage and deployment of the package, a Dockerfile is included. This Dockerfile generates a Docker image that includes all the dependencies of the `ros2_rag` package as well as the ROS2 Jazzy framework. This image can be generated using the *docker build* command inside the repository folder:
