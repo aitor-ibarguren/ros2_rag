@@ -8,7 +8,7 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import LifecycleNode
 
-from ros2_rag_msgs.srv import LoadCsvData, SaveIndex
+from ros2_rag_msgs.srv import LoadCsvData, LoadPdfData, SaveIndex
 
 
 @pytest.mark.launch_test()
@@ -82,6 +82,32 @@ class TestLifecycleLaunch(unittest.TestCase):
         req.chunking = False
 
         future = load_csv_data_client.call_async(req)
+        rclpy.spin_until_future_complete(self._node, future)
+
+        # Check result
+        self.assertTrue(future.result().success)
+
+    def test_load_pdf_data(self):
+        # Create load PDF data client
+        load_pdf_data_client = self._node.create_client(
+            LoadPdfData,
+            'ros2_rag/load_pdf_data'
+        )
+
+        # Wait until node is ready
+        while not load_pdf_data_client.wait_for_service(timeout_sec=1.0):
+            print("Waiting for 'load_pdf_data' service...")
+
+        # Fill request
+        req = LoadPdfData.Request()
+        req.folder_path = (os.path.join(
+            get_package_share_directory('ros2_rag'),
+            'test', 'data'
+        ))
+        req.chunk_size = 256
+        req.chunk_overlap = 25
+
+        future = load_pdf_data_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
 
         # Check result

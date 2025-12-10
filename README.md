@@ -82,7 +82,22 @@ ros2 launch ros2_rag ros2_rag auto_activate:=true
 
 ## ROS2 RAG Services
 
-The ROS2 RAG node offers the next services:
+### Data Management
+
+The ROS2 RAG node offers the following services for managing the knowledge base of the RAG system:
+
+* **/ros2_rag/load_csv_data:** Service to load data to the knowledge base from a CSV file. It is necessary to define the path to the CSV file, as well as the CSV column name/header (only this column's information will be extracted when parsing the CSV file). Although the service manages each CSV row as a chunk, it is possible to activate an additional chunking to divide each cells text.
+* **/ros2_rag/load_pdf_data:** Service to load data to the knowledge base from PDF files contained in the provided folder path. The service chunks the PDFs content.
+* **/ros2_rag/save_index:** Saves the index (knowledge base) in the provided folder path for future uses.
+
+The data loading services include arguments to define the chunking parameters:
+
+* *chunk_size:* Number of characters of the chunk.
+* *chunk_overlap:* Number of characters overlapped between adjacent chunks.
+
+### Queries
+
+The ROS2 RAG node offers the following services for querying the RAG system:
 
 * **/ros2_rag/query:** Service to query the RAG system, generating the completion using only the LLM.
 * **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is an snippet of a valid template:

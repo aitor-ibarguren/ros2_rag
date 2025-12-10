@@ -9,7 +9,8 @@ from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
 from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
-from ros2_rag_msgs.srv import LoadCsvData, Query, RAGQuery, SaveIndex
+from ros2_rag_msgs.srv import (LoadCsvData, LoadPdfData, Query, RAGQuery,
+                               SaveIndex)
 
 
 class ROS2RAGClass:
@@ -215,6 +216,11 @@ class ROS2RAGClass:
             self.load_csv_data_callback)
         self._logger.info('Load CSV data service ready ✅')
 
+        self._load_pdf_data_srv = self._node.create_service(
+            LoadPdfData, self._node.get_name()+'/load_pdf_data',
+            self.load_pdf_data_callback)
+        self._logger.info('Load PDF data service ready ✅')
+
         self._save_index_srv = self._node.create_service(
             SaveIndex, self._node.get_name()+'/save_index',
             self.save_index_callback)
@@ -256,6 +262,38 @@ class ROS2RAGClass:
             response.success = False
             response.error_code = -1
             response.error_msg = 'Error loading CSV file'
+
+            self._logger.error('❌ ' + response.error_msg)
+        else:
+            # Get new index size
+            _, new_size = self._retriever.get_index_size()
+
+            self._logger.info(
+                f"Added {new_size - initial_size} new items to index 📚 "
+                f"(total index size {new_size})")
+
+            response.success = True
+            response.error_code = 0
+            response.error_msg = ''
+
+        return response
+
+    def load_pdf_data_callback(self, request, response):
+        self._logger.info('LOAD PDF DATA request received...')
+
+        # Get initial index size
+        _, initial_size = self._retriever.get_index_size()
+
+        # Load CSV data
+        self._logger.info(f"Loading '{request.folder_path}'...")
+
+        if not self._retriever.add_pdfs_from_folder(
+                request.folder_path,
+                chunk_size=request.chunk_size,
+                chunk_overlap=request.chunk_overlap):
+            response.success = False
+            response.error_code = -1
+            response.error_msg = 'Error loading PDFs from folder'
 
             self._logger.error('❌ ' + response.error_msg)
         else:

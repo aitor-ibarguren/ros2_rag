@@ -8,6 +8,7 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(
     ${PROJECT_NAME}
     "srv/LoadCsvData.srv"
+    "srv/LoadPdfData.srv"
     "srv/Query.srv"
     "srv/RAGQuery.srv"
     "srv/SaveIndex.srv"
