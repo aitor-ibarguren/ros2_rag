@@ -186,7 +186,7 @@ class ROS2RAGClass:
             version = list(FlanT5Type)[version_idx]
             self._generator = FlanT5Wrapper(list(FlanT5Type)[version_idx])
             self._logger.info(f'LLM model: Flan T5 - {version.name}')
-        elif params['params['generator_family'] == 'flan_t5''] == 'qwen':
+        elif params['generator_family'] == 'qwen':
             version = list(QwenType)[version_idx]
             self._generator = QwenWrapper(list(QwenType)[version_idx])
             self._logger.info(f'LLM model: QWEN - {version.name}')
