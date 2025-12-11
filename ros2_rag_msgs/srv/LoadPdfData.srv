@@ -1,0 +1,7 @@
+string folder_path
+int16 chunk_size
+int16 chunk_overlap
+---
+bool success
+int16 error_code
+string error_msg
