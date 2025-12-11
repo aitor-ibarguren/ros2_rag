@@ -1,4 +1,5 @@
 import os
+import re
 from typing import Dict, Tuple
 
 from llm_wrappers.deepseek_wrapper.deepseek_wrapper import (DeepseekType,
@@ -335,6 +336,21 @@ class ROS2RAGClass:
 
         return response
 
+    def _clean_query(self, completion: str, query: str) -> str:
+        # Check if completion includes query
+        if (query in completion and
+                completion.find(query) == 0):
+            clean_completion = completion[len(query):]
+            # Clean initial chartacters
+            clean_completion = clean_completion.lstrip(' .\n\t')
+        else:
+            clean_completion = completion
+
+        return clean_completion
+
+    def _remove_incomplete_sentences(self, completion: str) -> str:
+        return re.sub(r"\.[^.]*$", ".", completion)
+
     def query_callback(self, request, response):
         self._logger.info('QUERY request received...')
 
@@ -352,26 +368,18 @@ class ROS2RAGClass:
         if res:
             # Remove query if required
             if request.return_answer_only is True:
-                # Check if completion includes query
-                if (request.query in completion and
-                        completion.find(request.query) == 0):
-                    completion = completion[len(request.query):]
-                    if completion.startswith(" "):
-                        completion = completion[1:]
+                completion = self._clean_query(completion, request.query)
 
             # Remove incomplete sentences if required
             if request.return_answer_only is True:
-                last_dot = completion.rfind('.')
-                if last_dot != -1:
-                    completion = completion[:last_dot+1]
+                completion = self._remove_incomplete_sentences(completion)
 
             response.completion = completion
             response.success = True
             response.error_code = 0
             response.error_msg = ''
 
-            self._logger.info(
-                f'Completion "{completion}" generated and sent ✨')
+            self._logger.info('Completion generated and sent ✨')
         else:
             response.completion = ''
             response.success = False
@@ -461,18 +469,11 @@ class ROS2RAGClass:
         if res:
             # Remove query if required
             if request.return_answer_only is True:
-                # Check if completion includes query
-                if (augmented_prompt in completion and
-                        completion.find(augmented_prompt) == 0):
-                    completion = completion[len(request.query):]
-                    if completion.startswith(" "):
-                        completion = completion[1:]
+                completion = self._clean_query(completion, augmented_prompt)
 
             # Remove incomplete sentences if required
             if request.return_answer_only is True:
-                last_dot = completion.rfind('.')
-                if last_dot != -1:
-                    completion = completion[:last_dot+1]
+                completion = self._remove_incomplete_sentences(completion)
 
             response.completion = completion
             response.success = True
