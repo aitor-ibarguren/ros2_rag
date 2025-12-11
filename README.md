@@ -118,7 +118,7 @@ ANSWER:
 
 Both services include arguments to facilitate the RAG system queries:
 
-* *return_only_answer:* Removes the query text from the completion, returning only the answer to the query.
+* *return_answer_only:* Removes the query text from the completion, returning only the answer to the query.
 * *remove_incomplete_sentences:* Removes last incomplete sentence if the completion does not finish with a dot character.
 
 # Dockerfile

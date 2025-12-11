@@ -1,6 +1,6 @@
 string query
 
-bool return_only_answer
+bool return_answer_only
 bool remove_incomplete_sentences
 ---
 bool success
