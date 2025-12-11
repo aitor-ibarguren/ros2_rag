@@ -351,10 +351,13 @@ class ROS2RAGClass:
 
         if res:
             # Remove query if required
-            if request.return_answer_only:
-                completion = completion[len(request.query):]
-                if completion.startswith(" "):
-                    completion = completion[1:]
+            if request.return_answer_only is True:
+                # Check if completion includes query
+                if (request.query in completion and
+                        completion.find(request.query) == 0):
+                    completion = completion[len(request.query):]
+                    if completion.startswith(" "):
+                        completion = completion[1:]
 
             # Remove incomplete sentences if required
             if request.return_answer_only is True:
@@ -367,7 +370,8 @@ class ROS2RAGClass:
             response.error_code = 0
             response.error_msg = ''
 
-            self._logger.info('Completion generated and sent ✨')
+            self._logger.info(
+                f'Completion "{completion}" generated and sent ✨')
         else:
             response.completion = ''
             response.success = False
@@ -457,9 +461,12 @@ class ROS2RAGClass:
         if res:
             # Remove query if required
             if request.return_answer_only is True:
-                completion = completion[len(augmented_prompt):]
-                if completion.startswith(" "):
-                    completion = completion[1:]
+                # Check if completion includes query
+                if (augmented_prompt in completion and
+                        completion.find(augmented_prompt) == 0):
+                    completion = completion[len(request.query):]
+                    if completion.startswith(" "):
+                        completion = completion[1:]
 
             # Remove incomplete sentences if required
             if request.return_answer_only is True:
