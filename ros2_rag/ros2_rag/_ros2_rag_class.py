@@ -445,10 +445,14 @@ class ROS2RAGClass:
 
         # Get completion
         completion = ''
-        res, completion = self._generator.generate(augmented_prompt,
-                                                   self._max_new_tokens,
-                                                   self._temperature,
-                                                   self._top_p)
+        if self._generator_family == "flan_t5":
+            res, completion = self._generator.generate(augmented_prompt,
+                                                       self._max_new_tokens)
+        else:
+            res, completion = self._generator.generate(augmented_prompt,
+                                                       self._max_new_tokens,
+                                                       self._temperature,
+                                                       self._top_p)
 
         if res:
             # Remove query if required
