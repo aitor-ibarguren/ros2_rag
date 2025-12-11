@@ -79,7 +79,7 @@ class TestLifecycleLaunch(unittest.TestCase):
                      'the mid-2010s, particularly following the release of ' +
                      'a key major version. ' +
                      'QUESTION: When did Pytest became popular?')
-        req.return_only_answer = True
+        req.return_answer_only = True
         req.remove_incomplete_sentences = False
 
         future = query_client.call_async(req)
@@ -112,7 +112,7 @@ class TestLifecycleLaunch(unittest.TestCase):
                               '%query%\n' +
                               '--- ANSWER ---\n'
                               )
-        req.return_only_answer = False
+        req.return_answer_only = False
         req.remove_incomplete_sentences = True
 
         future = rag_query_client.call_async(req)
