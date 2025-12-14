@@ -47,9 +47,11 @@ class ROS2RAGClass:
         self._node.declare_parameter('generator_version', 'small')
         self._node.declare_parameter('generator_loading', 'pretrained')
         self._node.declare_parameter('knowledge_base_path', '~/knowledge_base')
-        self._node.declare_parameter('max_new_tokens', 50)
-        self._node.declare_parameter('temperature', 0.5)
-        self._node.declare_parameter('top_p', 0.9)
+        self._node.declare_parameter('retriever.top_k', 5)
+        self._node.declare_parameter('retriever.alpha', 0.6)
+        self._node.declare_parameter('generator.max_new_tokens', 50)
+        self._node.declare_parameter('generator.temperature', 0.5)
+        self._node.declare_parameter('generator.top_p', 0.9)
 
         # Get parameter values
         params['generator_family'] = self._node.get_parameter(
@@ -60,12 +62,16 @@ class ROS2RAGClass:
             'generator_loading').value
         params['knowledge_base_path'] = self._node.get_parameter(
             'knowledge_base_path').value
-        params['max_new_tokens'] = self._node.get_parameter(
-            'max_new_tokens').value
-        params['temperature'] = self._node.get_parameter(
-            'temperature').value
-        params['top_p'] = self._node.get_parameter(
-            'top_p').value
+        params['retriever.top_k'] = self._node.get_parameter(
+            'retriever.top_k').value
+        params['retriever.alpha'] = self._node.get_parameter(
+            'retriever.alpha').value
+        params['generator.max_new_tokens'] = self._node.get_parameter(
+            'generator.max_new_tokens').value
+        params['generator.temperature'] = self._node.get_parameter(
+            'generator.temperature').value
+        params['generator.top_p'] = self._node.get_parameter(
+            'generator.top_p').value
 
         return True, params
 
@@ -82,20 +88,36 @@ class ROS2RAGClass:
                            + "' unknown for family '" +
                            params['generator_family'] + "'")
 
-        # Check max new tokens is a positive int
-        if (not isinstance(params['max_new_tokens'], int) or
-                params['max_new_tokens'] < 1):
-            return False, ("Max. new tokens MUST be a positive integer")
+        # Check retriever top K is int between 1 and 25
+        if ((not isinstance(params['retriever.top_k'], (int))) or
+                params['retriever.top_k'] < 1 or
+                params['retriever.top_k'] > 25):
+            return False, ("Retriever - Top K MUST be between 1 and 25")
 
-        # Check temperature is between 0.0 and 1.5
-        if (not isinstance(params['temperature'], (int, float)) or
-                params['temperature'] < 0.0 or params['temperature'] > 1.5):
-            return False, ("Temperature MUST be between 0.0 and 1.5")
+        # Check retriever alpha is between 0.0 and 1.0
+        if ((not isinstance(params['retriever.alpha'], (int, float))) or
+                params['retriever.alpha'] < 0.0 or
+                params['retriever.alpha'] > 1.0):
+            return False, ("Retriever - Alpha MUST be between 0.0 and 1.0")
 
-        # Check top P is between 0.0 and 1.0
-        if ((not isinstance(params['top_p'], (int, float))) or
-                params['top_p'] < 0.0 or params['top_p'] > 1.0):
-            return False, ("Top P MUST be between 0.0 and 1.0")
+        # Check generator max new tokens is a positive int
+        if (not isinstance(params['generator.max_new_tokens'], int) or
+                params['generator.max_new_tokens'] < 1):
+            return (False,
+                    ("Generator - Max. new tokens MUST be a positive integer"))
+
+        # Check generator temperature is between 0.0 and 1.5
+        if (not isinstance(params['generator.temperature'], (int, float)) or
+                params['generator.temperature'] < 0.0 or
+                params['generator.temperature'] > 1.5):
+            return (False,
+                    ("Generator - Temperature MUST be between 0.0 and 1.5"))
+
+        # Check generator top P is between 0.0 and 1.0
+        if ((not isinstance(params['generator.top_p'], (int, float))) or
+                params['generator.top_p'] < 0.0 or
+                params['generator.top_p'] > 1.0):
+            return False, ("Generator - Top P MUST be between 0.0 and 1.0")
 
         return True, ''
 
@@ -202,15 +224,22 @@ class ROS2RAGClass:
         # Store generator family
         self._generator_family = params['generator_family']
 
+        # Print retriever params
+        self._logger.info('Retriever parameters 🎛️')
+        self._retriever_top_k = params['retriever.top_k']
+        self._logger.info(f'► Top K: {self._retriever_top_k}')
+        self._retriever_alpha = params['retriever.alpha']
+        self._logger.info(f'► Alpha: {self._retriever_alpha}')
+
         # Print generation params
         self._logger.info('Generation parameters 🎛️')
-        self._max_new_tokens = params['max_new_tokens']
-        self._logger.info(f'► Max new tokens: {self._max_new_tokens}')
+        self._gen_max_new_tokens = params['generator.max_new_tokens']
+        self._logger.info(f'► Max new tokens: {self._gen_max_new_tokens}')
         if self._generator_family != "flan_t5":
-            self._temperature = params['temperature']
-            self._logger.info(f'► Temperature: {self._temperature}')
-            self._top_p = params['top_p']
-            self._logger.info(f'► Top P: {self._top_p}')
+            self._gen_temperature = params['generator.temperature']
+            self._logger.info(f'► Temperature: {self._gen_temperature}')
+            self._gen_top_p = params['generator.top_p']
+            self._logger.info(f'► Top P: {self._gen_top_p}')
 
         return True
 
@@ -357,13 +386,15 @@ class ROS2RAGClass:
         # Get completion
         completion = ''
         if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(request.query,
-                                                       self._max_new_tokens)
+            res, completion = self._generator.generate(
+                request.query,
+                self._gen_max_new_tokens)
         else:
-            res, completion = self._generator.generate(request.query,
-                                                       self._max_new_tokens,
-                                                       self._temperature,
-                                                       self._top_p)
+            res, completion = self._generator.generate(
+                request.query,
+                self._gen_max_new_tokens,
+                self._gen_temperature,
+                self._gen_top_p)
 
         if res:
             # Remove query if required
@@ -435,7 +466,7 @@ class ROS2RAGClass:
 
         # Get the context information from knowledge base
         res, contexts, _ = self._retriever.hybrid_search(
-            [request.query], 5, 0.6)
+            [request.query], self._retriever_top_k, self._retriever_alpha)
 
         # Check if context
         if not res:
@@ -458,13 +489,15 @@ class ROS2RAGClass:
         # Get completion
         completion = ''
         if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(augmented_prompt,
-                                                       self._max_new_tokens)
+            res, completion = self._generator.generate(
+                augmented_prompt,
+                self._gen_max_new_tokens)
         else:
-            res, completion = self._generator.generate(augmented_prompt,
-                                                       self._max_new_tokens,
-                                                       self._temperature,
-                                                       self._top_p)
+            res, completion = self._generator.generate(
+                augmented_prompt,
+                self._gen_max_new_tokens,
+                self._gen_temperature,
+                self._gen_top_p)
 
         if res:
             # Remove query if required
