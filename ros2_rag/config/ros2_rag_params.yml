@@ -4,6 +4,10 @@ ros2_rag:
     generator_version: 'tiny'
     generator_loading: 'pretrained'
     knowledge_base_path: '/home/ubuntu/knowledge_base'
-    max_new_tokens: 50
-    temperature: 0.5
-    top_p: 0.9
+    retriever:
+      top_k: 5
+      alpha: 0.6
+    generator:
+      max_new_tokens: 50
+      temperature: 0.5
+      top_p: 0.9
