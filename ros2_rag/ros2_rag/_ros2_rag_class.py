@@ -499,9 +499,9 @@ class ROS2RAGClass:
             return
 
         # Build summary query
-        summary_query = 'Extract the user goals, constraints, and context of this conversation.'
-        summary_query += 'Do not add formatting. Do not use numbering or bullets.'
-        summary_query += 'Use short, atomic statements.\n\n'
+        summary_query = 'Extract the user goals, constraints, and context of' \
+            ' this conversation. Do not add formatting. Do not use numbering' \
+            ' or bullets. Use short, atomic statements.\n\n'
         summary_query += 'Interactions:\n'
 
         # Insert queries & completions
@@ -509,8 +509,9 @@ class ROS2RAGClass:
             summary_query += 'User: ' + query + '\n'
             summary_query += 'Assistant: ' + completion + '\n'
 
-        summary_query += '\nProvide a list of user goals, a list of constraints set by'
-        summary_query += ' the user, and a list of relevant context of the conversation'
+        summary_query += '\nProvide a list of user goals, a list of ' \
+            'constraints set by the user, and a list of relevant context' \
+            ' of the conversation'
 
         # Get completion
         completion = ''
