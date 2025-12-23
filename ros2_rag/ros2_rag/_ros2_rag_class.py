@@ -12,8 +12,9 @@ from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
 from ros2_rag._conversation_history_manager import ConversationHistoryManager
-from ros2_rag_msgs.srv import (LoadCsvData, LoadPdfData, Query, RAGQuery,
-                               SaveIndex)
+from ros2_rag_msgs.msg import Interaction
+from ros2_rag_msgs.srv import (GetHistory, LoadCsvData, LoadPdfData, Query,
+                               RAGQuery, SaveIndex)
 
 
 class ROS2RAGClass:
@@ -44,6 +45,7 @@ class ROS2RAGClass:
         self._summary_lock = threading.Lock()
 
         # Services
+        self._get_history_srv = None
         self._load_data_srv = None
         self._load_pdf_data_srv = None
         self._save_index_srv = None
@@ -328,6 +330,11 @@ class ROS2RAGClass:
 
     def activate(self) -> bool:
         # Initialize services
+        if self._history_active:
+            self._gwet_history_srv = self._node.create_service(
+                GetHistory, self._node.get_name()+'/get_history',
+                self.get_history_callback)
+            self._logger.info('Get history service ready ✅')
         self._load_csv_data_srv = self._node.create_service(
             LoadCsvData, self._node.get_name()+'/load_csv_data',
             self.load_csv_data_callback)
@@ -369,6 +376,44 @@ class ROS2RAGClass:
         self._logger.info('RAG query service shutdown ✔️')
 
         return True
+
+    def get_history_callback(self, request, response):
+        self._logger.info('GET HISTORY request received...')
+
+        # Get & fill summary
+        summary = self._conversation_history_manager.get_summary()
+        response.history_summary.user_goals = summary['user_goals']
+        response.history_summary.constraints = summary['constraints']
+        response.history_summary.context = summary['context']
+
+        # Get recent interactions
+        _, queries, completions = (
+            self._conversation_history_manager.get_recent_interactions())
+        # Fill & insert recent interaction msgs
+        for query, completion in zip(queries, completions):
+            interaction = Interaction()
+            interaction.query = query
+            interaction.completion = completion
+
+            response.recent_interactions.append(interaction)
+
+        # Get evicted interactions
+        _, queries, completions = (
+            self._conversation_history_manager.get_evicted_interactions())
+        # Fill & insert evicted interaction msgs
+        for query, completion in zip(queries, completions):
+            interaction = Interaction()
+            interaction.query = query
+            interaction.completion = completion
+
+            response.evicted_interactions.append(interaction)
+
+        # Fill header
+        response.success = True
+        response.error_code = 0
+        response.error_msg = ''
+
+        return response
 
     def load_csv_data_callback(self, request, response):
         self._logger.info('LOAD CSV DATA request received...')

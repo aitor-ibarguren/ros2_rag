@@ -18,6 +18,7 @@ if(BUILD_TESTING)
   add_launch_test(test/test_01_lifecycle_launch.py TIMEOUT "180")
   add_launch_test(test/test_02_data_loading_launch.py TIMEOUT "180")
   add_launch_test(test/test_03_query_launch.py TIMEOUT "180")
+  add_launch_test(test/test_04_history_launch.py TIMEOUT "180")
 
 endif()
 

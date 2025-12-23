@@ -91,6 +91,21 @@ class ConversationHistoryManager:
         else:
             return False
 
+    def get_recent_interactions(self) -> Tuple[bool, list, list]:
+        # Check if evicted_interactions stored
+        if len(self._recent_interations) == 0:
+            return False, [], []
+
+        # Get queries & completion
+        queries = []
+        completions = []
+
+        for interactions in self._recent_interations:
+            queries.append(interactions['query'])
+            completions.append(interactions['completion'])
+
+        return True, queries, completions
+
     def get_evicted_interactions(self) -> Tuple[bool, list, list]:
         # Check if evicted_interactions stored
         if len(self._evicted_interations) == 0:
