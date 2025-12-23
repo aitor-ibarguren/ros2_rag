@@ -100,21 +100,44 @@ The data loading services include arguments to define the chunking parameters:
 The ROS2 RAG node offers the following services for querying the RAG system:
 
 * **/ros2_rag/query:** Service to query the RAG system, generating the completion using only the LLM.
-* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is an snippet of a valid template:
+* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is a snippet of a valid template:
 
-```text
-You are a helpful AI assistant.
-Use the context below to answer the user question.
-If the answer is not contained in the context, say "The question can not be answered".
-Respond only with the answer.
+    ```text
+    You are a helpful AI assistant.
+    Use the context below to answer the user question.
+    If the answer is not contained in the context, say "The question can not be answered".
+    Respond only with the answer.
 
-CONTEXT:
-%context%
-  
-QUERY:
-%query%
-ANSWER:
-```
+    CONTEXT:
+    %context%
+      
+    QUERY:
+    %query%
+    ANSWER:
+    ```
+
+    If conversation history is active, the template **can** contain the labels **%conversation_summary%** and **%last_user_queries%** to insert information about the conversation history (more information about the history management is provided in the next subsection). Here is a snippet of a valid template including conversation history:
+
+    ```text
+    You are a helpful AI assistant.
+
+    CONVERSATION SUMMARY:
+    %conversation_summary%
+
+    LAST USER QUERIES:
+    %last_user_queries%
+
+    Use the context below to answer the user question.
+    If the answer is not contained in the context, say "The question can not be answered".
+    Respond only with the answer.
+
+    CONTEXT:
+    %context%
+      
+    QUERY:
+    %query%
+    ANSWER:
+    ```
 
 Both services include arguments to facilitate the RAG system queries:
 

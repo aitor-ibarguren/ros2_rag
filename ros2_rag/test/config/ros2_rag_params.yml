@@ -11,3 +11,9 @@ ros2_rag:
       max_new_tokens: 50
       temperature: 0.5
       top_p: 0.9
+    history_active: true
+    history:
+      recent_interaction_number: 1
+      evicted_interaction_number: 1
+    format:
+      remove_bullets: true

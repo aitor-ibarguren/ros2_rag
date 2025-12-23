@@ -8,6 +8,12 @@ ros2_rag:
       top_k: 5
       alpha: 0.6
     generator:
-      max_new_tokens: 50
+      max_new_tokens: 75
       temperature: 0.5
       top_p: 0.9
+    history_active: true
+    history:
+      recent_interaction_number: 2
+      evicted_interaction_number: 4
+    format:
+      remove_bullets: true
