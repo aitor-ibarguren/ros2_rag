@@ -1,7 +1,7 @@
 ros2_rag:
   ros__parameters:
-    generator_family: 'flan_t5'
-    generator_version: 'small'
+    generator_family: 'qwen'
+    generator_version: 'xtiny'
     generator_loading: 'pretrained'
     knowledge_base_path: '/tmp/knowledge_base'
     retriever:
