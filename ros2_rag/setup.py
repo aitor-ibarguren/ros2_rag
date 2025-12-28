@@ -11,13 +11,11 @@ setup(
     packages=find_packages() + [
         'llm_wrappers.deepseek_wrapper',
         'llm_wrappers.faiss_wrapper',
-        'llm_wrappers.flan_t5_wrapper',
         'llm_wrappers.qwen_wrapper'
     ],
     package_dir={
         'llm_wrappers.deepseek_wrapper': 'llm_wrappers/deepseek_wrapper',
         'llm_wrappers.faiss_wrapper': 'llm_wrappers/faiss_wrapper',
-        'llm_wrappers.flan_t5_wrapper': 'llm_wrappers/flan_t5_wrapper',
         'llm_wrappers.qwen_wrapper': 'llm_wrappers/qwen_wrapper'
     },
 

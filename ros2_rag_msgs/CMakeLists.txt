@@ -7,6 +7,9 @@ find_package(std_msgs REQUIRED)
 
 rosidl_generate_interfaces(
     ${PROJECT_NAME}
+    "msg/HistorySummary.msg"
+    "msg/Interaction.msg"
+    "srv/GetHistory.srv"
     "srv/LoadCsvData.srv"
     "srv/LoadPdfData.srv"
     "srv/Query.srv"

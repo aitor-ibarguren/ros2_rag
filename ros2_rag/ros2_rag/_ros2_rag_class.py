@@ -1,17 +1,18 @@
 import os
 import re
+import threading
 from typing import Dict, Tuple
 
 from llm_wrappers.deepseek_wrapper.deepseek_wrapper import (DeepseekType,
                                                             DeepseekWrapper)
 from llm_wrappers.faiss_wrapper.faiss_wrapper import FAISSWrapper
-from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
-                                                          FlanT5Wrapper)
 from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
-from ros2_rag_msgs.srv import (LoadCsvData, LoadPdfData, Query, RAGQuery,
-                               SaveIndex)
+from ros2_rag._conversation_history_manager import ConversationHistoryManager
+from ros2_rag_msgs.msg import Interaction
+from ros2_rag_msgs.srv import (GetHistory, LoadCsvData, LoadPdfData, Query,
+                               RAGQuery, SaveIndex)
 
 
 class ROS2RAGClass:
@@ -23,18 +24,30 @@ class ROS2RAGClass:
 
         # Generator family/versions
         self._ALLOWED_GENERATORS = {
-            "qwen": ["xtiny", "tiny", "small", "base", "large", "xl"],
-            "deepseek": ["r1_distill_qwen_tiny", "r1_distill_qwen_base",
-                         "r1_distill_llama_base", "r1_distill_qwen_large",
-                         "r1_distill_qwen_xl", "r1_distill_llama_xl"],
-            "flan_t5": ["small", "base", "large", "xl", "xxl"]
+            'qwen': ['xtiny', 'tiny', 'small', 'base', 'large', 'xl'],
+            'deepseek': ['r1_distill_qwen_tiny', 'r1_distill_qwen_base',
+                         'r1_distill_llama_base', 'r1_distill_qwen_large',
+                         'r1_distill_qwen_xl', 'r1_distill_llama_xl']
         }
 
         # Init vars
         self._generator = None
         self._retriever = None
 
+        # Init conversation history manager
+        self._conversation_history_manager = None
+
+        # Locks
+        self._generator_lock = threading.Lock()
+        self._summary_lock = threading.Lock()
+
+        # Services
+        self._get_history_srv = None
         self._load_data_srv = None
+        self._load_pdf_data_srv = None
+        self._save_index_srv = None
+        self._query_srv = None
+        self._rag_query_srv = None
 
     def __del__(self):
         self._logger.info('Destroying ROS2RAGClass instance...')
@@ -52,6 +65,10 @@ class ROS2RAGClass:
         self._node.declare_parameter('generator.max_new_tokens', 50)
         self._node.declare_parameter('generator.temperature', 0.5)
         self._node.declare_parameter('generator.top_p', 0.9)
+        self._node.declare_parameter('history_active', True)
+        self._node.declare_parameter('history.recent_interaction_number', 5)
+        self._node.declare_parameter('history.evicted_interaction_number', 10)
+        self._node.declare_parameter('format.remove_bullets', False)
 
         # Get parameter values
         params['generator_family'] = self._node.get_parameter(
@@ -72,6 +89,16 @@ class ROS2RAGClass:
             'generator.temperature').value
         params['generator.top_p'] = self._node.get_parameter(
             'generator.top_p').value
+        params['history_active'] = self._node.get_parameter(
+            'history_active').value
+        params['history.recent_interaction_number'] = self._node.get_parameter(
+            'history.recent_interaction_number').value
+        params[
+            'history.evicted_interaction_number'
+        ] = self._node.get_parameter(
+            'history.evicted_interaction_number').value
+        params['format.remove_bullets'] = self._node.get_parameter(
+            'format.remove_bullets').value
 
         return True, params
 
@@ -118,6 +145,34 @@ class ROS2RAGClass:
                 params['generator.top_p'] < 0.0 or
                 params['generator.top_p'] > 1.0):
             return False, ("Generator - Top P MUST be between 0.0 and 1.0")
+
+        # Check history active
+        if (not isinstance(params['history_active'], (bool))):
+            return False, ("History active MUST be true or false")
+
+        # Check history recent interaction number if active
+        if params['history_active']:
+            if ((not isinstance(params['history.recent_interaction_number'],
+                                (int)))
+                or params['history.recent_interaction_number'] < 1 or
+                    params['history.recent_interaction_number'] > 25):
+                return (
+                    False,
+                    ("Recent interaction number MUST be between 1 and 25"))
+
+        # Check history evicted interaction number if active
+        if params['history_active']:
+            if ((not isinstance(params['history.evicted_interaction_number'],
+                                (int)))
+                or params['history.evicted_interaction_number'] < 1 or
+                    params['history.evicted_interaction_number'] > 25):
+                return (
+                    False,
+                    ("Evicted interaction number MUST be between 1 and 25"))
+
+        # Check remove bullets
+        if (not isinstance(params['format.remove_bullets'], (bool))):
+            return False, ("Remove bullets (format) MUST be true or false")
 
         return True, ''
 
@@ -205,10 +260,6 @@ class ROS2RAGClass:
             version = list(DeepseekType)[version_idx]
             self._generator = DeepseekWrapper(list(DeepseekType)[version_idx])
             self._logger.info(f'LLM model: Deepseek - {version.name}')
-        elif params['generator_family'] == 'flan_t5':
-            version = list(FlanT5Type)[version_idx]
-            self._generator = FlanT5Wrapper(list(FlanT5Type)[version_idx])
-            self._logger.info(f'LLM model: Flan T5 - {version.name}')
         elif params['generator_family'] == 'qwen':
             version = list(QwenType)[version_idx]
             self._generator = QwenWrapper(list(QwenType)[version_idx])
@@ -235,16 +286,47 @@ class ROS2RAGClass:
         self._logger.info('Generation parameters 🎛️')
         self._gen_max_new_tokens = params['generator.max_new_tokens']
         self._logger.info(f'► Max new tokens: {self._gen_max_new_tokens}')
-        if self._generator_family != "flan_t5":
-            self._gen_temperature = params['generator.temperature']
-            self._logger.info(f'► Temperature: {self._gen_temperature}')
-            self._gen_top_p = params['generator.top_p']
-            self._logger.info(f'► Top P: {self._gen_top_p}')
+        self._gen_temperature = params['generator.temperature']
+        self._logger.info(f'► Temperature: {self._gen_temperature}')
+        self._gen_top_p = params['generator.top_p']
+        self._logger.info(f'► Top P: {self._gen_top_p}')
+
+        # Print history params if active
+        self._history_active = params['history_active']
+        if self._history_active:
+            self._logger.info('History parameters 🎛️')
+            self._recent_interaction_number = params[
+                'history.recent_interaction_number']
+            self._evicted_interaction_number = params[
+                'history.evicted_interaction_number']
+
+            self._logger.info(
+                '► Recent interaction number: ' +
+                f'{self._recent_interaction_number}')
+            self._logger.info(
+                '► Evicted interaction number: ' +
+                f'{self._evicted_interaction_number}')
+
+            # Init history
+            self._conversation_history_manager = ConversationHistoryManager(
+                self._recent_interaction_number,
+                self._evicted_interaction_number
+            )
+
+        # Print format params
+        self._logger.info('Format parameters 🎛️')
+        self._format_remove_bullets = params['format.remove_bullets']
+        self._logger.info(f'► Remove bullets: {self._format_remove_bullets}')
 
         return True
 
     def activate(self) -> bool:
         # Initialize services
+        if self._history_active:
+            self._gwet_history_srv = self._node.create_service(
+                GetHistory, self._node.get_name()+'/get_history',
+                self.get_history_callback)
+            self._logger.info('Get history service ready ✅')
         self._load_csv_data_srv = self._node.create_service(
             LoadCsvData, self._node.get_name()+'/load_csv_data',
             self.load_csv_data_callback)
@@ -274,9 +356,56 @@ class ROS2RAGClass:
     def deactivate(self) -> bool:
         # Shutdown services
         self._node.destroy_service(self._load_data_srv)
+        self._node.destroy_service(self._load_pdf_data_srv)
+        self._node.destroy_service(self._save_index_srv)
+        self._node.destroy_service(self._query_srv)
+        self._node.destroy_service(self._rag_query_srv)
+
+        self._logger.info('Load data service shutdown ✔️')
+        self._logger.info('Load PDF data service shutdown ✔️')
+        self._logger.info('Save index service shutdown ✔️')
         self._logger.info('Query service shutdown ✔️')
+        self._logger.info('RAG query service shutdown ✔️')
 
         return True
+
+    def get_history_callback(self, request, response):
+        self._logger.info('GET HISTORY request received...')
+
+        # Get & fill summary
+        summary = self._conversation_history_manager.get_summary()
+        response.history_summary.user_goals = summary['user_goals']
+        response.history_summary.constraints = summary['constraints']
+        response.history_summary.context = summary['context']
+
+        # Get recent interactions
+        _, queries, completions = (
+            self._conversation_history_manager.get_recent_interactions())
+        # Fill & insert recent interaction msgs
+        for query, completion in zip(queries, completions):
+            interaction = Interaction()
+            interaction.query = query
+            interaction.completion = completion
+
+            response.recent_interactions.append(interaction)
+
+        # Get evicted interactions
+        _, queries, completions = (
+            self._conversation_history_manager.get_evicted_interactions())
+        # Fill & insert evicted interaction msgs
+        for query, completion in zip(queries, completions):
+            interaction = Interaction()
+            interaction.query = query
+            interaction.completion = completion
+
+            response.evicted_interactions.append(interaction)
+
+        # Fill header
+        response.success = True
+        response.error_code = 0
+        response.error_msg = ''
+
+        return response
 
     def load_csv_data_callback(self, request, response):
         self._logger.info('LOAD CSV DATA request received...')
@@ -372,38 +501,123 @@ class ROS2RAGClass:
             clean_completion = completion[len(query):]
             # Clean initial chartacters
             clean_completion = clean_completion.lstrip(' .\n\t')
+            # Clean bullets abd numerical headers if required
+            if self._format_remove_bullets:
+                clean_completion = re.sub(
+                    r'^\s*\d+\s*[.)-]\s*',
+                    '',
+                    clean_completion,
+                    flags=re.MULTILINE
+                )
+
         else:
             clean_completion = completion
 
         return clean_completion
 
     def _remove_incomplete_sentences(self, completion: str) -> str:
-        return re.sub(r"\.[^.]*$", ".", completion)
+        # Remove until last dot
+        clean_completion = re.sub(r"\.[^.]*$", ".", completion)
+        # Remove possible "numerations" (e.g. '2.')
+        clean_completion = re.sub(r'[\n\s]*\d+\.\s*$', '', clean_completion)
+
+        return clean_completion
+
+    def _update_summary(self):
+        # Get evicted queries/completions
+        res, queries, completions = (
+            self._conversation_history_manager.get_evicted_interactions()
+        )
+
+        # Check if evicted interactions stored
+        if not res:
+            # Release lock
+            self._summary_lock.release()
+            return
+
+        # Build summary query
+        summary_query = 'Extract the user goals, constraints, and context of' \
+            ' this conversation. Do not add formatting. Do not use numbering' \
+            ' or bullets. Use short, atomic statements.\n\n'
+        summary_query += 'Interactions:\n'
+
+        # Insert queries & completions
+        for query, completion in zip(queries, completions):
+            summary_query += 'User: ' + query + '\n'
+            summary_query += 'Assistant: ' + completion + '\n'
+
+        summary_query += '\nProvide a list of user goals, a list of ' \
+            'constraints set by the user, and a list of relevant context' \
+            ' of the conversation'
+
+        # Get completion
+        completion = ''
+
+        self._generator_lock.acquire()
+
+        res, completion = self._generator.generate(
+            summary_query,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
+
+        self._generator_lock.release()
+
+        # Clean completion
+        completion = self._clean_query(completion, summary_query)
+
+        # Store summary
+        self._conversation_history_manager.store_summary(completion)
+
+        # Release lock
+        self._summary_lock.release()
 
     def query_callback(self, request, response):
         self._logger.info('QUERY request received...')
 
+        # If history active - Insert history prompt
+        if self._history_active:
+            query = (
+                self._conversation_history_manager.get_history_prompt() +
+                request.query + '\nAssistant: ')
+        else:
+            query = request.query
+
         # Get completion
         completion = ''
-        if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(
-                request.query,
-                self._gen_max_new_tokens)
-        else:
-            res, completion = self._generator.generate(
-                request.query,
-                self._gen_max_new_tokens,
-                self._gen_temperature,
-                self._gen_top_p)
+
+        self._generator_lock.acquire()
+
+        res, completion = self._generator.generate(
+            query,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
+
+        self._generator_lock.release()
 
         if res:
             # Remove query if required
             if request.return_answer_only is True:
-                completion = self._clean_query(completion, request.query)
-
+                completion = self._clean_query(completion, query)
             # Remove incomplete sentences if required
-            if request.return_answer_only is True:
+            if request.remove_incomplete_sentences is True:
                 completion = self._remove_incomplete_sentences(completion)
+
+            # Manage history if required
+            if self._history_active:
+                # Store query/completion
+                self._conversation_history_manager.store_new_interaction(
+                    request.query, completion
+                )
+
+                # Check if ther RAG system is already summarizing interactions
+                if self._summary_lock.acquire(blocking=False):
+                    # Update summary (separate thread to speed up response)
+                    thread = threading.Thread(target=self._update_summary)
+                    thread.start()
+                else:
+                    self._logger.info('Skipping summarization')
 
             response.completion = completion
             response.success = True
@@ -421,16 +635,34 @@ class ROS2RAGClass:
 
         return response
 
-    def _verify_query_template(self, query_template: str) -> Tuple[bool, str]:
+    def _verify_query_template(self, query_template: str,
+                               history_active: bool) -> Tuple[bool, str]:
         # Check context tag
         if query_template.count('%context%') != 1:
             error_msg = ("The query template must contain a '%context%' tag " +
                          "to insert the information from the knowledge base")
 
             return False, error_msg
+        # Check query tag
         elif query_template.count('%query%') != 1:
             error_msg = ("The query template must contain a '%query%' tag to" +
                          " insert the provided query")
+
+            return False, error_msg
+        # Check conversation summary tag (if applicable)
+        elif (history_active and
+              query_template.count('%conversation_summary%') > 1):
+            error_msg = ("The query template contains more than a " +
+                         "'%conversation_summary%' tag to insert the " +
+                         "conversation summary")
+
+            return False, error_msg
+        # Check last user queries tag (if applicable)
+        elif (history_active and
+              query_template.count('%last_user_queries%') > 1):
+            error_msg = ("The query template must contains more than a " +
+                         "'%last_user_queries%' tag to insert the " +
+                         "last user queries")
 
             return False, error_msg
 
@@ -440,7 +672,8 @@ class ROS2RAGClass:
         self._logger.info('RAG QUERY request received...')
 
         # Verify template
-        res, error_msg = self._verify_query_template(request.query_template)
+        res, error_msg = self._verify_query_template(request.query_template,
+                                                     self._history_active)
 
         if not res:
             response.completion = ''
@@ -486,18 +719,37 @@ class ROS2RAGClass:
         # Insert query
         augmented_prompt = augmented_prompt.replace('%query%', request.query)
 
+        # Insert conversation summary if history active and tag present
+        if (self._history_active and
+                augmented_prompt.count('%conversation_summary%') == 1):
+            # Insert summary
+            conversation_summary = (
+                self._conversation_history_manager
+                .get_conversation_summary_as_string())
+            augmented_prompt = augmented_prompt.replace(
+                '%conversation_summary%', conversation_summary)
+        # Insert last user queries if history active and tag present
+        if (self._history_active and
+                augmented_prompt.count('%last_user_queries%') == 1):
+            # Insert summary
+            last_user_queries = (
+                self._conversation_history_manager
+                .get_last_user_queries_as_string())
+            augmented_prompt = augmented_prompt.replace(
+                '%last_user_queries%', last_user_queries)
+
         # Get completion
         completion = ''
-        if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(
-                augmented_prompt,
-                self._gen_max_new_tokens)
-        else:
-            res, completion = self._generator.generate(
-                augmented_prompt,
-                self._gen_max_new_tokens,
-                self._gen_temperature,
-                self._gen_top_p)
+
+        self._generator_lock.acquire()
+
+        res, completion = self._generator.generate(
+            augmented_prompt,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
+
+        self._generator_lock.release()
 
         if res:
             # Remove query if required
@@ -505,8 +757,23 @@ class ROS2RAGClass:
                 completion = self._clean_query(completion, augmented_prompt)
 
             # Remove incomplete sentences if required
-            if request.return_answer_only is True:
+            if request.remove_incomplete_sentences is True:
                 completion = self._remove_incomplete_sentences(completion)
+
+            # Manage history if required
+            if self._history_active:
+                # Store query/completion
+                self._conversation_history_manager.store_new_interaction(
+                    request.query, completion
+                )
+
+                # Check if ther RAG system is already summarizing interactions
+                if self._summary_lock.acquire(blocking=False):
+                    # Update summary (separate thread to speed up response)
+                    thread = threading.Thread(target=self._update_summary)
+                    thread.start()
+                else:
+                    self._logger.info('Skipping summarization')
 
             response.completion = completion
             response.success = True

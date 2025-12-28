@@ -1,0 +1,8 @@
+---
+bool success
+int16 error_code
+string error_msg
+
+ros2_rag_msgs/HistorySummary history_summary
+ros2_rag_msgs/Interaction[] recent_interactions
+ros2_rag_msgs/Interaction[] evicted_interactions

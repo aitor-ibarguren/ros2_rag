@@ -45,7 +45,7 @@ def generate_test_description():
 
 
 # Active tests
-class TestLifecycleLaunch(unittest.TestCase):
+class TestDataLoadingLaunch(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rclpy.init()
@@ -55,8 +55,8 @@ class TestLifecycleLaunch(unittest.TestCase):
         rclpy.shutdown()
 
     def setUp(self):
-        self._node = rclpy.create_node('test_lifecycle_launch')
-        self._node.get_logger().info("Node 'test_lifecycle_launch' init")
+        self._node = rclpy.create_node('test_data_loading_launch')
+        self._node.get_logger().info("Node 'test_data_loading_launch' init")
 
     def tearDown(self):
         self._node.destroy_node()

@@ -8,7 +8,7 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from launch_ros.actions import LifecycleNode
 
-from ros2_rag_msgs.srv import Query, RAGQuery
+from ros2_rag_msgs.srv import GetHistory, Query
 
 
 @pytest.mark.launch_test(timeout=30)
@@ -45,7 +45,7 @@ def generate_test_description():
 
 
 # Active tests
-class TestQueryLaunch(unittest.TestCase):
+class TestHistoryLaunch(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         rclpy.init()
@@ -55,13 +55,13 @@ class TestQueryLaunch(unittest.TestCase):
         rclpy.shutdown()
 
     def setUp(self):
-        self._node = rclpy.create_node('test_query_launch')
-        self._node.get_logger().info("Node 'test_query_launch' init")
+        self._node = rclpy.create_node('test_history_launch')
+        self._node.get_logger().info("Node 'test_history_launch' init")
 
     def tearDown(self):
         self._node.destroy_node()
 
-    def test_query(self):
+    def query(self, query: str) -> bool:
         # Create load CSV data client
         query_client = self._node.create_client(
             Query,
@@ -85,39 +85,25 @@ class TestQueryLaunch(unittest.TestCase):
         future = query_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
 
-        # Check result
-        self.assertTrue(future.result().success and len(
-            future.result().completion) > 0)
+        return future.result().success
 
-    def test_rag_query(self):
-        # Create load CSV data client
-        rag_query_client = self._node.create_client(
-            RAGQuery,
-            'ros2_rag/rag_query'
+    def test_history(self):
+        # Create get History client
+        get_history_client = self._node.create_client(
+            GetHistory,
+            'ros2_rag/get_history'
         )
 
         # Wait until node is ready
-        while not rag_query_client.wait_for_service(timeout_sec=1.0):
-            print("Waiting for 'rag_query' service...")
+        while not get_history_client.wait_for_service(timeout_sec=1.0):
+            print("Waiting for 'get_history' service...")
 
         # Fill request
-        req = RAGQuery.Request()
-        req.query = 'Can I buy a Gibson brand guitar in the shop?'
-        req.query_template = ('You are a helpful AI assistant. Use the ' +
-                              'context below to answer the user question.\n' +
-                              '--- CONTEXT START ---\n' +
-                              '%context%\n' +
-                              '--- CONTEXT END ---' +
-                              '--- QUESTION ---\n' +
-                              '%query%\n' +
-                              '--- ANSWER ---\n'
-                              )
-        req.return_answer_only = False
-        req.remove_incomplete_sentences = True
+        req = GetHistory.Request()
 
-        future = rag_query_client.call_async(req)
+        future = get_history_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
 
         # Check result
         self.assertTrue(future.result().success and len(
-            future.result().completion) > 0)
+            future.result().recent_interactions) == 0)

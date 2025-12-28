@@ -1,0 +1,2 @@
+string query
+string completion

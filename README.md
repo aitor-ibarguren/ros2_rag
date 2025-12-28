@@ -48,9 +48,17 @@ The current implementation allows the configuration of several parameters of the
 * **generator_version:** Version of generator included in *Transformers* library.
 * **generator_loading:** Loading procedure for the generator.
 * **knowledge_base_path:** The path of the knowledge base. If the folder does not exists or is empty, the node will create a new index that can be stored in this folder or any other by means of a ROS2 service provided by the node.
-* **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
-* **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
-* **top_p:** Value to control the token sampling. Usual values range from 1.0 (sampling from all tokens) to 0.8 (safe sampling), with a good balance between quality and creativity at 0.9.
+* **retriever**
+  * **top_k:** Number of fetched chunks in the retriever search.
+  * **alpha:** Alpha to weigh semantic and keyword search in hybrid search (*alpha* for semantic search and *1 - alpha* for keyword search).
+* **generator**
+  * **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
+  * **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
+  * **top_p:** Value to control the token sampling. Usual values range from 1.0 (sampling from all tokens) to 0.8 (safe sampling), with a good balance between quality and creativity at 0.9.
+* **history_active:** Boolean to define if history information is used in queries.
+* **history**
+  * **recent_interaction_number:** Number of interactions (query and completion) stored as recent interactions. These recent interactions will be inserted in queries when history is active.
+  * **evicted_interaction_number:** Number of interactions (query and completion) stored as evicted interactions. These evicted interactions will be used to create the summary of the conversation.
 
 The next lines show a snippet of the *YAML* file defining the configuration of the ROS2 RAG node:
 
@@ -61,9 +69,19 @@ ros2_rag:
     generator_version: 'small'
     generator_loading: 'pretrained'
     knowledge_base_path: '/home/ubuntu/knowledge_base'
-    max_new_tokens: 50
-    temperature: 0.5
-    top_p: 0.9
+    retriever:
+      top_k: 5
+      alpha: 0.6
+    generator:
+      max_new_tokens: 75
+      temperature: 0.5
+      top_p: 0.9
+    history_active: true
+    history:
+      recent_interaction_number: 2
+      evicted_interaction_number: 4
+    format:
+      remove_bullets: true
 ```
 
 The complete list of LLM models and versions is depicted in the next table:
@@ -71,7 +89,6 @@ The complete list of LLM models and versions is depicted in the next table:
 | Generator Family | Family tag | Generator versions & tags |
 | :--- | :--- | :--- |
 | **Deepseek** | `deepseek` |➤ DeepSeek R1 Distill Qwen 1.5B - `r1_distill_qwen_tiny`<br>➤ DeepSeek R1 Distill Qwen 7B - `r1_distill_qwen_base`<br>➤ DeepSeek R1 Distill Llama 8B - `r1_distill_llama_base`<br>➤ DeepSeek R1 Distill Qwen 14B - `r1_distill_qwen_large`<br>➤ DeepSeek R1 Distill Qwen 32B - `r1_distill_qwen_xl`<br>➤ DeepSeek R1 Distill Llama 70B - `r1_distill_llama_xl` |
-| **Flan T5** | `flan_t5` |➤ Flan T5 small - `small`<br>➤ Flan T5 base - `base`<br>➤ Flan T5 large - `large`<br>➤ Flan T5 XL - `xl`<br>➤ Flan T5 XXL - `xxl` |
 | **Qwen** | `qwen` |➤ Qwen 2.5 0.5B Instruct - `xtiny`<br>➤ Qwen 2.5 1.5B Instruct - `tiny`<br>➤ Qwen 2.5 3B Instruc - `small`<br>➤ Qwen 2.5 7B Instruct - `base`<br>➤ Qwen 2.5 14B Instruct - `large`<br>➤ Qwen 2.5 72B Instruct - `xl` |
 
 Additionally, as ROS2 RAG is implemented as a lifecycle node, the *auto_activate* launch argument (by default *false*) allows defining if the node configures and activates automatically, launching the node as:
@@ -100,26 +117,61 @@ The data loading services include arguments to define the chunking parameters:
 The ROS2 RAG node offers the following services for querying the RAG system:
 
 * **/ros2_rag/query:** Service to query the RAG system, generating the completion using only the LLM.
-* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is an snippet of a valid template:
+* **/ros2_rag/rag_query:** Service to query the RAG system, creating an augmented query with information retrieved from the knowledge base. The service includes two parameters, the *query* and *query template*. This *query template* contains the complete prompt where the ROS2 RAG node will insert context retrieved from the knowledge base as well as the query itself. To this end, the *query template* **MUST** contain the labels **%context%** and **%query%** to identify the insertion points. Here is a snippet of a valid template:
 
-```text
-You are a helpful AI assistant.
-Use the context below to answer the user question.
-If the answer is not contained in the context, say "The question can not be answered".
-Respond only with the answer.
+    ```text
+    You are a helpful AI assistant.
+    Use the context below to answer the user question.
+    If the answer is not contained in the context, say "The question can not be answered".
+    Respond only with the answer.
 
-CONTEXT:
-%context%
-  
-QUERY:
-%query%
-ANSWER:
-```
+    CONTEXT:
+    %context%
+      
+    QUERY:
+    %query%
+    ANSWER:
+    ```
+
+    If conversation history is active, the template **can** contain the labels **%conversation_summary%** and **%last_user_queries%** to insert information about the conversation history (more information about the history management is provided in the next subsection). Here is a snippet of a valid template including conversation history:
+
+    ```text
+    You are a helpful AI assistant.
+
+    CONVERSATION SUMMARY:
+    %conversation_summary%
+
+    LAST USER QUERIES:
+    %last_user_queries%
+
+    Use the context below to answer the user question.
+    If the answer is not contained in the context, say "The question can not be answered".
+    Respond only with the answer.
+
+    CONTEXT:
+    %context%
+      
+    QUERY:
+    %query%
+    ANSWER:
+    ```
 
 Both services include arguments to facilitate the RAG system queries:
 
 * *return_answer_only:* Removes the query text from the completion, returning only the answer to the query.
 * *remove_incomplete_sentences:* Removes last incomplete sentence if the completion does not finish with a dot character.
+
+### History
+
+The ros2_rag allows managing the conversation/interaction history and inject it in the user queries. This history management can be activated and configured through the configuration YAML file by means of the [previously described parameters](#ros2-rag-system-configuration).
+
+The history information is divided into three main elements:
+
+* **Recent interactions:** The last interactions (query and completions) are stored and injected when the history is active.
+  * In **standard queries**, both queries and completions are inserted as a header, creating an augmented prompt.
+  * In **RAG queries**, only queries are inserted to avoid shadowing the retriever data.
+* **Evicted interactions:** As new interactions arrive, the oldest ones are moved to evicted interactions. These evicted interactions are used to create a summary of the conversation, inserting this information in a summarized and concise way.
+* **Summary:** The summary of the conversation is stored as a list of user goals, constraints, and context information. The summarization process is carried out by the LLM model when evicted interactions are inserted, executed in a separate thread launched right after the completion of a standard or RAG query is returned.
 
 # Dockerfile
 
