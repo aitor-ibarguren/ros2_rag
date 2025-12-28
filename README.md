@@ -89,7 +89,6 @@ The complete list of LLM models and versions is depicted in the next table:
 | Generator Family | Family tag | Generator versions & tags |
 | :--- | :--- | :--- |
 | **Deepseek** | `deepseek` |➤ DeepSeek R1 Distill Qwen 1.5B - `r1_distill_qwen_tiny`<br>➤ DeepSeek R1 Distill Qwen 7B - `r1_distill_qwen_base`<br>➤ DeepSeek R1 Distill Llama 8B - `r1_distill_llama_base`<br>➤ DeepSeek R1 Distill Qwen 14B - `r1_distill_qwen_large`<br>➤ DeepSeek R1 Distill Qwen 32B - `r1_distill_qwen_xl`<br>➤ DeepSeek R1 Distill Llama 70B - `r1_distill_llama_xl` |
-| **Flan T5** | `flan_t5` |➤ Flan T5 small - `small`<br>➤ Flan T5 base - `base`<br>➤ Flan T5 large - `large`<br>➤ Flan T5 XL - `xl`<br>➤ Flan T5 XXL - `xxl` |
 | **Qwen** | `qwen` |➤ Qwen 2.5 0.5B Instruct - `xtiny`<br>➤ Qwen 2.5 1.5B Instruct - `tiny`<br>➤ Qwen 2.5 3B Instruc - `small`<br>➤ Qwen 2.5 7B Instruct - `base`<br>➤ Qwen 2.5 14B Instruct - `large`<br>➤ Qwen 2.5 72B Instruct - `xl` |
 
 Additionally, as ROS2 RAG is implemented as a lifecycle node, the *auto_activate* launch argument (by default *false*) allows defining if the node configures and activates automatically, launching the node as:

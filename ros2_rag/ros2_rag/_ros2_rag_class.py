@@ -6,8 +6,6 @@ from typing import Dict, Tuple
 from llm_wrappers.deepseek_wrapper.deepseek_wrapper import (DeepseekType,
                                                             DeepseekWrapper)
 from llm_wrappers.faiss_wrapper.faiss_wrapper import FAISSWrapper
-from llm_wrappers.flan_t5_wrapper.flan_t5_wrapper import (FlanT5Type,
-                                                          FlanT5Wrapper)
 from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
@@ -29,8 +27,7 @@ class ROS2RAGClass:
             'qwen': ['xtiny', 'tiny', 'small', 'base', 'large', 'xl'],
             'deepseek': ['r1_distill_qwen_tiny', 'r1_distill_qwen_base',
                          'r1_distill_llama_base', 'r1_distill_qwen_large',
-                         'r1_distill_qwen_xl', 'r1_distill_llama_xl'],
-            'flan_t5': ['small', 'base', 'large', 'xl', 'xxl']
+                         'r1_distill_qwen_xl', 'r1_distill_llama_xl']
         }
 
         # Init vars
@@ -263,10 +260,6 @@ class ROS2RAGClass:
             version = list(DeepseekType)[version_idx]
             self._generator = DeepseekWrapper(list(DeepseekType)[version_idx])
             self._logger.info(f'LLM model: Deepseek - {version.name}')
-        elif params['generator_family'] == 'flan_t5':
-            version = list(FlanT5Type)[version_idx]
-            self._generator = FlanT5Wrapper(list(FlanT5Type)[version_idx])
-            self._logger.info(f'LLM model: Flan T5 - {version.name}')
         elif params['generator_family'] == 'qwen':
             version = list(QwenType)[version_idx]
             self._generator = QwenWrapper(list(QwenType)[version_idx])
@@ -293,11 +286,10 @@ class ROS2RAGClass:
         self._logger.info('Generation parameters 🎛️')
         self._gen_max_new_tokens = params['generator.max_new_tokens']
         self._logger.info(f'► Max new tokens: {self._gen_max_new_tokens}')
-        if self._generator_family != "flan_t5":
-            self._gen_temperature = params['generator.temperature']
-            self._logger.info(f'► Temperature: {self._gen_temperature}')
-            self._gen_top_p = params['generator.top_p']
-            self._logger.info(f'► Top P: {self._gen_top_p}')
+        self._gen_temperature = params['generator.temperature']
+        self._logger.info(f'► Temperature: {self._gen_temperature}')
+        self._gen_top_p = params['generator.top_p']
+        self._logger.info(f'► Top P: {self._gen_top_p}')
 
         # Print history params if active
         self._history_active = params['history_active']
@@ -563,16 +555,11 @@ class ROS2RAGClass:
 
         self._generator_lock.acquire()
 
-        if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(
-                summary_query,
-                self._gen_max_new_tokens)
-        else:
-            res, completion = self._generator.generate(
-                summary_query,
-                self._gen_max_new_tokens,
-                self._gen_temperature,
-                self._gen_top_p)
+        res, completion = self._generator.generate(
+            summary_query,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
 
         self._generator_lock.release()
 
@@ -601,16 +588,11 @@ class ROS2RAGClass:
 
         self._generator_lock.acquire()
 
-        if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(
-                query,
-                self._gen_max_new_tokens)
-        else:
-            res, completion = self._generator.generate(
-                query,
-                self._gen_max_new_tokens,
-                self._gen_temperature,
-                self._gen_top_p)
+        res, completion = self._generator.generate(
+            query,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
 
         self._generator_lock.release()
 
@@ -761,16 +743,11 @@ class ROS2RAGClass:
 
         self._generator_lock.acquire()
 
-        if self._generator_family == "flan_t5":
-            res, completion = self._generator.generate(
-                augmented_prompt,
-                self._gen_max_new_tokens)
-        else:
-            res, completion = self._generator.generate(
-                augmented_prompt,
-                self._gen_max_new_tokens,
-                self._gen_temperature,
-                self._gen_top_p)
+        res, completion = self._generator.generate(
+            augmented_prompt,
+            self._gen_max_new_tokens,
+            self._gen_temperature,
+            self._gen_top_p)
 
         self._generator_lock.release()
 
