@@ -48,9 +48,17 @@ The current implementation allows the configuration of several parameters of the
 * **generator_version:** Version of generator included in *Transformers* library.
 * **generator_loading:** Loading procedure for the generator.
 * **knowledge_base_path:** The path of the knowledge base. If the folder does not exists or is empty, the node will create a new index that can be stored in this folder or any other by means of a ROS2 service provided by the node.
-* **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
-* **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
-* **top_p:** Value to control the token sampling. Usual values range from 1.0 (sampling from all tokens) to 0.8 (safe sampling), with a good balance between quality and creativity at 0.9.
+* **retriever**
+  * **top_k:** Number of fetched chunks in the retriever search.
+  * **alpha:** Alpha to weigh semantic and keyword search in hybrid search (*alpha* for semantic search and *1 - alpha* for keyword search).
+* **generator**
+  * **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
+  * **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
+  * **top_p:** Value to control the token sampling. Usual values range from 1.0 (sampling from all tokens) to 0.8 (safe sampling), with a good balance between quality and creativity at 0.9.
+* **history_active:** Boolean to define if history information is used in queries.
+* **history**
+  * **recent_interaction_number:** Number of interactions (query and completion) stored as recent interactions. These recent interactions will be inserted in queries when history is active.
+  * **evicted_interaction_number:** Number of interactions (query and completion) stored as evicted interactions. These evicted interactions will be used to create the summary of the conversation.
 
 The next lines show a snippet of the *YAML* file defining the configuration of the ROS2 RAG node:
 
@@ -61,9 +69,19 @@ ros2_rag:
     generator_version: 'small'
     generator_loading: 'pretrained'
     knowledge_base_path: '/home/ubuntu/knowledge_base'
-    max_new_tokens: 50
-    temperature: 0.5
-    top_p: 0.9
+    retriever:
+      top_k: 5
+      alpha: 0.6
+    generator:
+      max_new_tokens: 75
+      temperature: 0.5
+      top_p: 0.9
+    history_active: true
+    history:
+      recent_interaction_number: 2
+      evicted_interaction_number: 4
+    format:
+      remove_bullets: true
 ```
 
 The complete list of LLM models and versions is depicted in the next table:
@@ -143,6 +161,18 @@ Both services include arguments to facilitate the RAG system queries:
 
 * *return_answer_only:* Removes the query text from the completion, returning only the answer to the query.
 * *remove_incomplete_sentences:* Removes last incomplete sentence if the completion does not finish with a dot character.
+
+### History
+
+The ros2_rag allows managing the conversation/interaction history and inject it in the user queries. This history management can be activated and configured through the configuration YAML file by means of the [previously described parameters](#ros2-rag-system-configuration).
+
+The history information is divided into three main elements:
+
+* **Recent interactions:** The last interactions (query and completions) are stored and injected when the history is active.
+  * In **standard queries**, both queries and completions are inserted as a header, creating an augmented prompt.
+  * In **RAG queries**, only queries are inserted to avoid shadowing the retriever data.
+* **Evicted interactions:** As new interactions arrive, the oldest ones are moved to evicted interactions. These evicted interactions are used to create a summary of the conversation, inserting this information in a summarized and concise way.
+* **Summary:** The summary of the conversation is stored as a list of user goals, constraints, and context information. The summarization process is carried out by the LLM model when evicted interactions are inserted, executed in a separate thread launched right after the completion of a standard or RAG query is returned.
 
 # Dockerfile
 
