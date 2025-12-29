@@ -776,6 +776,7 @@ class ROS2RAGClass:
                     self._logger.info('Skipping summarization')
 
             response.completion = completion
+            response.context_chunks = contexts[0]
             response.success = True
             response.error_code = 0
             response.error_msg = ''

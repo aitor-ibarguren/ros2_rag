@@ -9,3 +9,4 @@ int32 error_code
 string error_msg
 
 string completion
+string[] context_chunks
