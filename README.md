@@ -156,6 +156,8 @@ The ROS2 RAG node offers the following services for querying the RAG system:
     ANSWER:
     ```
 
+    The service also returns the context chunks obtainer from the retriever to improve interpretability and facilitate debugging.
+
 Both services include arguments to facilitate the RAG system queries:
 
 * *return_answer_only:* Removes the query text from the completion, returning only the answer to the query.

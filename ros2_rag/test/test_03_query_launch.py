@@ -120,4 +120,5 @@ class TestQueryLaunch(unittest.TestCase):
 
         # Check result
         self.assertTrue(future.result().success and len(
-            future.result().completion) > 0)
+            future.result().completion) > 0 and
+            len(future.result().context_chunks) > 0)
