@@ -10,10 +10,10 @@ from llm_wrappers.qwen_wrapper.qwen_wrapper import QwenType, QwenWrapper
 from rclpy.lifecycle import LifecycleNode
 
 from ros2_rag._conversation_history_manager import ConversationHistoryManager
+from ros2_rag._rag_verification_manager import RAGVerificationManager
 from ros2_rag_msgs.msg import Interaction
 from ros2_rag_msgs.srv import (GetHistory, LoadCsvData, LoadPdfData, Query,
                                RAGQuery, SaveIndex)
-from sentence_transformers import CrossEncoder
 
 
 class ROS2RAGClass:
@@ -38,8 +38,8 @@ class ROS2RAGClass:
         # Init conversation history manager
         self._conversation_history_manager = None
 
-        # Init RAG verification model
-        self._rag_verification_model_ = None
+        # Init RAG verification manager
+        self._rag_verification_manager = None
 
         # Locks
         self._generator_lock = threading.Lock()
@@ -354,11 +354,10 @@ class ROS2RAGClass:
                 '► Entailment threshold: ' +
                 f'{self._rag_verification_entailment_threshold}')
 
-            # Init cross encoder
-            self._rag_verification_model_ = CrossEncoder(
-                "cross-encoder/nli-deberta-v3-base")
+            # Init RAG verification manager
+            self._rag_verification_manager = RAGVerificationManager()
             self._logger.info(
-                'RAG verification model successfully initialized 🎯')
+                'RAG verification successfully initialized 🎯')
 
         return True
 
@@ -804,45 +803,14 @@ class ROS2RAGClass:
 
             # Verify claims/sentences if required
             if self._rag_verification_active:
-                # Divide in sentences
-                sentences = completion.split('.')
-                sentences = [s.strip() + '.' for s in sentences if s.strip()]
-
-                # Create pairs for chunks/sentences & get scores
-                # Chunks are the premise and sentence the hypotheses
-                pairs = [(context, sentence) for sentence in sentences
-                         for context in contexts[0]]
-                scores = self._rag_verification_model_.predict(
-                    pairs, apply_softmax=True)
-
-                # Get entailed & contradiction index
-                entail_idx = self._rag_verification_model_.config.label2id[
-                    "entailment"]
-
-                # Group scores by sentence
-                entail_scores = [
-                    [
-                        scores[i * len(contexts[0]) + j][entail_idx]
-                        for j in range(len(contexts[0]))
-                    ]
-                    for i in range(len(sentences))
-                ]
-
-                # Filter sentences (at least one score above threshold)
-                accepted_sentences = []
-                refused_sentences = []
-
-                for s, s_scores in zip(sentences, entail_scores):
-                    if any(score >=
-                           self._rag_verification_entailment_threshold
-                           for score in s_scores):
-                        accepted_sentences.append(s)
-                    else:
-                        refused_sentences.append(s)
-
-                # Merge in completion & fill removed claims
-                completion = " ".join(accepted_sentences)
-                response.removed_claims = refused_sentences
+                # Get verified completion & removed claims
+                res, completion, response.removed_claims = (
+                    self._rag_verification_manager.verify_RAG_completion(
+                        completion,
+                        contexts[0],
+                        self._rag_verification_entailment_threshold
+                    )
+                )
 
             # Manage history if required
             if self._history_active:
