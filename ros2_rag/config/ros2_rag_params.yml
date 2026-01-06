@@ -17,3 +17,6 @@ ros2_rag:
       evicted_interaction_number: 4
     format:
       remove_bullets: true
+    rag_verification_active: true
+    rag_verification:
+      entailment_threshold: 0.75
