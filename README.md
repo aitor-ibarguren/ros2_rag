@@ -189,7 +189,7 @@ The *ros2_rag* node provides a verification step in **RAG queries** to check the
 
 Specifically, the node makes use of `cross-encoder/nli-deberta-v3-base` cross-encoder model to calculate the entailment, contradiction, and neutrality scores. The entailment score is used to verify the alignment between each claim and the chunks, ensuring that at least one of these chunks entails the sentence.
 
-# Dockerfile
+## Dockerfile
 
 To facilitate the usage and deployment of the package, a Dockerfile is included. This Dockerfile generates a Docker image that includes all the dependencies of the `ros2_rag` package as well as the ROS2 Jazzy framework. This image can be generated using the *docker build* command inside the repository folder:
 
