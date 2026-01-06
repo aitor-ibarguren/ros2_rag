@@ -13,6 +13,7 @@ from ros2_rag._conversation_history_manager import ConversationHistoryManager
 from ros2_rag_msgs.msg import Interaction
 from ros2_rag_msgs.srv import (GetHistory, LoadCsvData, LoadPdfData, Query,
                                RAGQuery, SaveIndex)
+from sentence_transformers import CrossEncoder
 
 
 class ROS2RAGClass:
@@ -36,6 +37,9 @@ class ROS2RAGClass:
 
         # Init conversation history manager
         self._conversation_history_manager = None
+
+        # Init RAG verification model
+        self._rag_verification_model_ = None
 
         # Locks
         self._generator_lock = threading.Lock()
@@ -69,6 +73,9 @@ class ROS2RAGClass:
         self._node.declare_parameter('history.recent_interaction_number', 5)
         self._node.declare_parameter('history.evicted_interaction_number', 10)
         self._node.declare_parameter('format.remove_bullets', False)
+        self._node.declare_parameter('rag_verification_active', True)
+        self._node.declare_parameter('rag_verification.entailment_threshold',
+                                     0.75)
 
         # Get parameter values
         params['generator_family'] = self._node.get_parameter(
@@ -99,6 +106,11 @@ class ROS2RAGClass:
             'history.evicted_interaction_number').value
         params['format.remove_bullets'] = self._node.get_parameter(
             'format.remove_bullets').value
+        params['rag_verification_active'] = self._node.get_parameter(
+            'rag_verification_active').value
+        params['rag_verification.entailment_threshold'] = (
+            self._node.get_parameter(
+                'rag_verification.entailment_threshold').value)
 
         return True, params
 
@@ -125,30 +137,30 @@ class ROS2RAGClass:
         if ((not isinstance(params['retriever.alpha'], (int, float))) or
                 params['retriever.alpha'] < 0.0 or
                 params['retriever.alpha'] > 1.0):
-            return False, ("Retriever - Alpha MUST be between 0.0 and 1.0")
+            return False, ('Retriever - Alpha MUST be between 0.0 and 1.0')
 
         # Check generator max new tokens is a positive int
         if (not isinstance(params['generator.max_new_tokens'], int) or
                 params['generator.max_new_tokens'] < 1):
             return (False,
-                    ("Generator - Max. new tokens MUST be a positive integer"))
+                    ('Generator - Max. new tokens MUST be a positive integer'))
 
         # Check generator temperature is between 0.0 and 1.5
         if (not isinstance(params['generator.temperature'], (int, float)) or
                 params['generator.temperature'] < 0.0 or
                 params['generator.temperature'] > 1.5):
             return (False,
-                    ("Generator - Temperature MUST be between 0.0 and 1.5"))
+                    ('Generator - Temperature MUST be between 0.0 and 1.5'))
 
         # Check generator top P is between 0.0 and 1.0
         if ((not isinstance(params['generator.top_p'], (int, float))) or
                 params['generator.top_p'] < 0.0 or
                 params['generator.top_p'] > 1.0):
-            return False, ("Generator - Top P MUST be between 0.0 and 1.0")
+            return False, ('Generator - Top P MUST be between 0.0 and 1.0')
 
         # Check history active
         if (not isinstance(params['history_active'], (bool))):
-            return False, ("History active MUST be true or false")
+            return False, ('History active MUST be true or false')
 
         # Check history recent interaction number if active
         if params['history_active']:
@@ -158,7 +170,7 @@ class ROS2RAGClass:
                     params['history.recent_interaction_number'] > 25):
                 return (
                     False,
-                    ("Recent interaction number MUST be between 1 and 25"))
+                    ('Recent interaction number MUST be between 1 and 25'))
 
         # Check history evicted interaction number if active
         if params['history_active']:
@@ -168,11 +180,24 @@ class ROS2RAGClass:
                     params['history.evicted_interaction_number'] > 25):
                 return (
                     False,
-                    ("Evicted interaction number MUST be between 1 and 25"))
+                    ('Evicted interaction number MUST be between 1 and 25'))
 
         # Check remove bullets
         if (not isinstance(params['format.remove_bullets'], (bool))):
-            return False, ("Remove bullets (format) MUST be true or false")
+            return False, ('Remove bullets (format) MUST be true or false')
+
+        # Check RAG verification active
+        if (not isinstance(params['rag_verification_active'], (bool))):
+            return False, ('RAG verification MUST be true or false')
+
+        # Check RAG verification - Entailment threshold
+        if (not isinstance(params['rag_verification.entailment_threshold'],
+                           (int, float)) or
+                params['rag_verification.entailment_threshold'] < 0.0 or
+                params['rag_verification.entailment_threshold'] > 1.0):
+            return (False,
+                    ('RAG verification - Entailment threshold MUST be \
+                     between 0.0 and 1.0'))
 
         return True, ''
 
@@ -317,6 +342,23 @@ class ROS2RAGClass:
         self._logger.info('Format parameters 🎛️')
         self._format_remove_bullets = params['format.remove_bullets']
         self._logger.info(f'► Remove bullets: {self._format_remove_bullets}')
+
+        # Print RAG verification params
+        self._rag_verification_active = params['rag_verification_active']
+        if self._rag_verification_active:
+            self._logger.info('RAG verification parameters 🎛️')
+            self._rag_verification_entailment_threshold = params[
+                'rag_verification.entailment_threshold']
+
+            self._logger.info(
+                '► Entailment threshold: ' +
+                f'{self._rag_verification_entailment_threshold}')
+
+            # Init cross encoder
+            self._rag_verification_model_ = CrossEncoder(
+                "cross-encoder/nli-deberta-v3-base")
+            self._logger.info(
+                'RAG verification model successfully initialized 🎯')
 
         return True
 
@@ -759,6 +801,48 @@ class ROS2RAGClass:
             # Remove incomplete sentences if required
             if request.remove_incomplete_sentences is True:
                 completion = self._remove_incomplete_sentences(completion)
+
+            # Verify claims/sentences if required
+            if self._rag_verification_active:
+                # Divide in sentences
+                sentences = completion.split('.')
+                sentences = [s.strip() + '.' for s in sentences if s.strip()]
+
+                # Create pairs for chunks/sentences & get scores
+                # Chunks are the premise and sentence the hypotheses
+                pairs = [(context, sentence) for sentence in sentences
+                         for context in contexts[0]]
+                scores = self._rag_verification_model_.predict(
+                    pairs, apply_softmax=True)
+
+                # Get entailed & contradiction index
+                entail_idx = self._rag_verification_model_.config.label2id[
+                    "entailment"]
+
+                # Group scores by sentence
+                entail_scores = [
+                    [
+                        scores[i * len(contexts[0]) + j][entail_idx]
+                        for j in range(len(contexts[0]))
+                    ]
+                    for i in range(len(sentences))
+                ]
+
+                # Filter sentences (at least one score above threshold)
+                accepted_sentences = []
+                refused_sentences = []
+
+                for s, s_scores in zip(sentences, entail_scores):
+                    if any(score >=
+                           self._rag_verification_entailment_threshold
+                           for score in s_scores):
+                        accepted_sentences.append(s)
+                    else:
+                        refused_sentences.append(s)
+
+                # Merge in completion & fill removed claims
+                completion = " ".join(accepted_sentences)
+                response.removed_claims = refused_sentences
 
             # Manage history if required
             if self._history_active:

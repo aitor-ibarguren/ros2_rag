@@ -59,6 +59,9 @@ The current implementation allows the configuration of several parameters of the
 * **history**
   * **recent_interaction_number:** Number of interactions (query and completion) stored as recent interactions. These recent interactions will be inserted in queries when history is active.
   * **evicted_interaction_number:** Number of interactions (query and completion) stored as evicted interactions. These evicted interactions will be used to create the summary of the conversation.
+* **rag_verification_active:** Boolean to define if the claims of the completion are verified against the retrieved chunks.
+* **rag_verification**
+  * **entailment_threshold:** The entailment threshold used in RAG verification to accept a completion claim. The threshold ranges from 0.0 to 1.0, with a balanced value of 0.75 (mid-high confidence).
 
 The next lines show a snippet of the *YAML* file defining the configuration of the ROS2 RAG node:
 
@@ -82,6 +85,9 @@ ros2_rag:
       evicted_interaction_number: 4
     format:
       remove_bullets: true
+    rag_verification_active: true
+    rag_verification:
+      entailment_threshold: 0.75
 ```
 
 The complete list of LLM models and versions is depicted in the next table:
@@ -156,7 +162,7 @@ The ROS2 RAG node offers the following services for querying the RAG system:
     ANSWER:
     ```
 
-    The service also returns the context chunks obtainer from the retriever to improve interpretability and facilitate debugging.
+    The service also returns the context chunks obtained from the retriever as well as the removed claims (when RAG verificaton active) to improve interpretability and facilitate debugging.
 
 Both services include arguments to facilitate the RAG system queries:
 
@@ -165,7 +171,7 @@ Both services include arguments to facilitate the RAG system queries:
 
 ### History
 
-The ros2_rag allows managing the conversation/interaction history and inject it in the user queries. This history management can be activated and configured through the configuration YAML file by means of the [previously described parameters](#ros2-rag-system-configuration).
+The *ros2_rag* node allows managing the conversation/interaction history and inject it in the user queries. This history management can be activated and configured through the configuration YAML file by means of the [previously described parameters](#ros2-rag-system-configuration).
 
 The history information is divided into three main elements:
 
@@ -174,6 +180,12 @@ The history information is divided into three main elements:
   * In **RAG queries**, only queries are inserted to avoid shadowing the retriever data.
 * **Evicted interactions:** As new interactions arrive, the oldest ones are moved to evicted interactions. These evicted interactions are used to create a summary of the conversation, inserting this information in a summarized and concise way.
 * **Summary:** The summary of the conversation is stored as a list of user goals, constraints, and context information. The summarization process is carried out by the LLM model when evicted interactions are inserted, executed in a separate thread launched right after the completion of a standard or RAG query is returned.
+
+### RAG Verification
+
+The *ros2_rag* node provides a verification step in **RAG queries** to check the entailment between the completion claims (sentences) and the chunks obtained from the retriever. The aim is reducing hallucinations from the LLM, removing information made up or not present in the context chunks.
+
+The node makes use of `cross-encoder/nli-deberta-v3-base` cross-encoder model to calculate the entailment, contradiction, and neutrality scores. The entailment score is used to verify the alignment between each claim and the chunks, ensuring that at least one of these chunks entails the sentence.
 
 # Dockerfile
 
