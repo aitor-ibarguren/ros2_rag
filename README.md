@@ -51,6 +51,8 @@ The current implementation allows the configuration of several parameters of the
 * **retriever**
   * **top_k:** Number of fetched chunks in the retriever search.
   * **alpha:** Alpha to weigh semantic and keyword search in hybrid search (*alpha* for semantic search and *1 - alpha* for keyword search).
+  * **semantic_search_threshold:** Threshold for the semantic search (HNSW graph, inner product socre). Chunks with a similarity below the threshold are removed.
+  * **keyword_search_threshold:** Threshold for the keyword search (cosine similarity). Chunks with a similarity below the threshold are removed.
 * **generator**
   * **max_new_tokens:** Maximum new tokens generated in the queries and RAG queries.
   * **temperature:** Temperature of the generation. Controls the randomness of the output from very deterministic (0.1) to high diversity (1.0), with a balanced randomness value of 0.7.
@@ -75,6 +77,8 @@ ros2_rag:
     retriever:
       top_k: 5
       alpha: 0.6
+      semantic_search_threshold: 0.35
+      keyword_search_threshold: 0.15
     generator:
       max_new_tokens: 75
       temperature: 0.5
@@ -170,6 +174,12 @@ Both services include arguments to facilitate the RAG system queries:
 * *remove_incomplete_sentences:* Removes last incomplete sentence if the completion does not finish with a dot character.
 
 ## RAG System Features
+
+### Retriever
+
+The retriever’s behaviour can be tuned through the different parameters available in the configuration YAML file. The **top_k** and **alpha** values allow defining the number of chunks and the weight factor between the semantic and keyword search.
+
+Additionally, the **semantic** and **keyword search thresholds** filter the chunks by similarity value, as a mechanism to remove irrelevant chunks from the augmented query.
 
 ### History
 
