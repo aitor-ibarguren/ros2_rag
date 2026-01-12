@@ -66,6 +66,9 @@ class ROS2RAGClass:
         self._node.declare_parameter('knowledge_base_path', '~/knowledge_base')
         self._node.declare_parameter('retriever.top_k', 5)
         self._node.declare_parameter('retriever.alpha', 0.6)
+        self._node.declare_parameter('retriever.semantic_search_threshold',
+                                     0.5)
+        self._node.declare_parameter('retriever.keyword_search_threshold', 0.5)
         self._node.declare_parameter('generator.max_new_tokens', 50)
         self._node.declare_parameter('generator.temperature', 0.5)
         self._node.declare_parameter('generator.top_p', 0.9)
@@ -90,6 +93,12 @@ class ROS2RAGClass:
             'retriever.top_k').value
         params['retriever.alpha'] = self._node.get_parameter(
             'retriever.alpha').value
+        params['retriever.semantic_search_threshold'] = (
+            self._node
+            .get_parameter('retriever.semantic_search_threshold').value)
+        params['retriever.keyword_search_threshold'] = (
+            self._node
+            .get_parameter('retriever.keyword_search_threshold').value)
         params['generator.max_new_tokens'] = self._node.get_parameter(
             'generator.max_new_tokens').value
         params['generator.temperature'] = self._node.get_parameter(
@@ -138,6 +147,22 @@ class ROS2RAGClass:
                 params['retriever.alpha'] < 0.0 or
                 params['retriever.alpha'] > 1.0):
             return False, ('Retriever - Alpha MUST be between 0.0 and 1.0')
+
+        # Check retriever semantic search threshold is between 0.0 and 1.0
+        if ((not isinstance(params['retriever.semantic_search_threshold'],
+                            (int, float))) or
+                params['retriever.semantic_search_threshold'] < 0.0 or
+                params['retriever.semantic_search_threshold'] > 1.0):
+            return False, ('Retriever - Semantic search threshold'
+                           ' MUST be between 0.0 and 1.0')
+
+        # Check retriever keyword search threshold is between 0.0 and 1.0
+        if ((not isinstance(params['retriever.keyword_search_threshold'],
+                            (int, float))) or
+                params['retriever.keyword_search_threshold'] < 0.0 or
+                params['retriever.keyword_search_threshold'] > 1.0):
+            return False, ('Retriever - Keyword search threshold'
+                           ' MUST be between 0.0 and 1.0')
 
         # Check generator max new tokens is a positive int
         if (not isinstance(params['generator.max_new_tokens'], int) or
@@ -306,6 +331,14 @@ class ROS2RAGClass:
         self._logger.info(f'► Top K: {self._retriever_top_k}')
         self._retriever_alpha = params['retriever.alpha']
         self._logger.info(f'► Alpha: {self._retriever_alpha}')
+        self._retriever_semantic_threshold = params[
+            'retriever.semantic_search_threshold']
+        self._logger.info('► Semantic search threshold: '
+                          f'{self._retriever_semantic_threshold}')
+        self._retriever_keyword_threshold = params[
+            'retriever.keyword_search_threshold']
+        self._logger.info('► Keyword search threshold: '
+                          f'{self._retriever_keyword_threshold}')
 
         # Print generation params
         self._logger.info('Generation parameters 🎛️')
@@ -740,7 +773,9 @@ class ROS2RAGClass:
 
         # Get the context information from knowledge base
         res, contexts, _ = self._retriever.hybrid_search(
-            [request.query], self._retriever_top_k, self._retriever_alpha)
+            [request.query], self._retriever_top_k, self._retriever_alpha,
+            self._retriever_semantic_threshold,
+            self._retriever_keyword_threshold)
 
         # Check if context
         if not res:
@@ -748,6 +783,15 @@ class ROS2RAGClass:
             response.success = False
             response.error_code = -3
             response.error_msg = 'Error retrieving context'
+
+            self._logger.error('❌ ' + response.error_msg)
+
+            return response
+        elif len(contexts[0]) == 0:
+            response.completion = "I don't have enough information to answer."
+            response.success = False
+            response.error_code = -4
+            response.error_msg = 'No relevant context chunk found'
 
             self._logger.error('❌ ' + response.error_msg)
 
@@ -837,7 +881,7 @@ class ROS2RAGClass:
         else:
             response.completion = ''
             response.success = False
-            response.error_code = -3
+            response.error_code = -5
             response.error_msg = 'Error generating completion'
 
             self._logger.error('❌ ' + response.error_msg)
