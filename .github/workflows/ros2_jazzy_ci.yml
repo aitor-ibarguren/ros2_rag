@@ -59,12 +59,16 @@ jobs:
           cp -r $GITHUB_WORKSPACE/ros2_rag ros_ws/src
           cp -r $GITHUB_WORKSPACE/ros2_rag_msgs ros_ws/src
 
-      # 6. Install dependencies with rosdep
+      # 6. Install dependencies with rosdep & apt install
       - name: Install dependencies
         run: |
           cd ../ros_ws
           rosdep update
           rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
+          sudo apt install -y \
+            ros-jazzy-launch-testing \
+            ros-jazzy-launch-testing-ament-cmake \
+            ros-jazzy-launch-testing-ros
 
       # 7. Build with colcon
       - name: Build with colcon
