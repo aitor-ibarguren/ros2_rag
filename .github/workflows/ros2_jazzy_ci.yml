@@ -48,7 +48,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
-              pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
+              pip install --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
       # 5. Create workspace & copy files from the clone repo
