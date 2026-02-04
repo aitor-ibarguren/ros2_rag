@@ -36,7 +36,6 @@ jobs:
           sudo rm -rf /usr/local/share/chromium || true
           sudo rm -rf ~/.cache || true
           sudo rm -rf /var/cache/apt/* || true
-          sudo rm -rf /var/lib/apt/lists/* || true
 
           pip cache purge || true
 
@@ -82,6 +81,7 @@ jobs:
         run: |
           cd ../ros_ws
           source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
           colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
       # 9. Upload logs on failure
