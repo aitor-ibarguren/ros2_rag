@@ -80,10 +80,7 @@ jobs:
           cd ../ros_ws
           source /opt/ros/jazzy/setup.bash
           source install/setup.bash
-          colcon test \
-            --return-code-on-test-failure \
-            --event-handlers console_direct+ \
-            --pytest-args="--ignore=src/ros2_rag/llm_wrappers"
+          colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
       # 9. Upload logs on failure
       - name: Upload colcon test logs
