@@ -72,7 +72,7 @@ jobs:
         run: |
           cd ../ros_ws
           source /opt/ros/jazzy/setup.bash
-          colcon build
+          colcon build --symlink-install
           source install/setup.bash
           colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
