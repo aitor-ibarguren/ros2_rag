@@ -8,6 +8,8 @@
   <maintainer email="aitor.ibarguren.s@gmail.com">Aitor Ibarguren</maintainer>
   <license>Apache 2.0</license>
 
+  <buildtool_depend>ament_python</buildtool_depend>
+
   <depend>rclcpp</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>lifecycle_msgs</depend>
