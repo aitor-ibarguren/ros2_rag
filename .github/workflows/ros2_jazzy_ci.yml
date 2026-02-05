@@ -17,7 +17,7 @@ jobs:
 
       # 2. Set up ROS 2 Jazzy
       - name: Set up ROS 2 Jazzy
-        uses: ros-tooling/setup-ros@v0.9
+        uses: ros-tooling/setup-ros@v0.7
         with:
           required-ros-distributions: jazzy
 
