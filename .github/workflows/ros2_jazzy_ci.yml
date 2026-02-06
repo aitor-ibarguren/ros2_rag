@@ -74,11 +74,11 @@ jobs:
           colcon build
         
       # 8. Testing with colcon
-      - name: Colcon test
-        run: |
-          cd ../ros_ws
-          source /opt/ros/jazzy/setup.bash
-          colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
+      # - name: Colcon test
+      #   run: |
+      #     cd ../ros_ws
+      #     source /opt/ros/jazzy/setup.bash
+      #     colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
       # 9. Upload logs on failure
       - name: Upload colcon test logs

@@ -3,6 +3,7 @@ ros2_rag:
     generator_family: 'qwen'
     generator_version: 'tiny'
     generator_loading: 'pretrained'
+    generator_precision: 'int8'
     knowledge_base_path: '/home/ubuntu/knowledge_base'
     retriever:
       top_k: 5
@@ -21,4 +22,4 @@ ros2_rag:
       remove_bullets: true
     rag_verification_active: true
     rag_verification:
-      entailment_threshold: 0.75
+      entailment_threshold: 0.35

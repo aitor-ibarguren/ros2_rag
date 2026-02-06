@@ -30,6 +30,8 @@ class ROS2RAGClass:
                          'r1_distill_llama_base', 'r1_distill_qwen_large',
                          'r1_distill_qwen_xl', 'r1_distill_llama_xl']
         }
+        # Generator precisions
+        self._ALLOWED_PRECISIONS = ['fp32', 'fp16', 'int8']
 
         # Init vars
         self._generator = None
@@ -63,6 +65,7 @@ class ROS2RAGClass:
         self._node.declare_parameter('generator_family', 'qwen')
         self._node.declare_parameter('generator_version', 'small')
         self._node.declare_parameter('generator_loading', 'pretrained')
+        self._node.declare_parameter('generator_precision', 'fp16')
         self._node.declare_parameter('knowledge_base_path', '~/knowledge_base')
         self._node.declare_parameter('retriever.top_k', 5)
         self._node.declare_parameter('retriever.alpha', 0.6)
@@ -87,6 +90,8 @@ class ROS2RAGClass:
             'generator_version').value
         params['generator_loading'] = self._node.get_parameter(
             'generator_loading').value
+        params['generator_precision'] = self._node.get_parameter(
+            'generator_precision').value
         params['knowledge_base_path'] = self._node.get_parameter(
             'knowledge_base_path').value
         params['retriever.top_k'] = self._node.get_parameter(
@@ -135,6 +140,10 @@ class ROS2RAGClass:
             return False, ("Generator version '" + params['generator_version']
                            + "' unknown for family '" +
                            params['generator_family'] + "'")
+
+        # Check generator precision
+        if params['generator_precision'] not in self._ALLOWED_PRECISIONS:
+            return False, ('Generator precision MUST be fp32/fp16/int8')
 
         # Check retriever top K is int between 1 and 25
         if ((not isinstance(params['retriever.top_k'], (int))) or
@@ -315,10 +324,13 @@ class ROS2RAGClass:
             self._generator = QwenWrapper(list(QwenType)[version_idx])
             self._logger.info(f'LLM model: QWEN - {version.name}')
 
+        self._generator_precision = params['generator_precision']
+        self._logger.info(f'LLM model precision: {self._generator_precision}')
+
         # Load generator
         if params['generator_loading'] == 'pretrained':
             self._logger.info('Loading ⏳ pretrained model...')
-            self._generator.load_pretrained_model()
+            self._generator.load_pretrained_model(self._generator_precision)
 
         self._logger.info('Model successfully loaded 🎯')
 

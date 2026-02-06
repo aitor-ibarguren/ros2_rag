@@ -22,4 +22,11 @@ if(BUILD_TESTING)
 
 endif()
 
+install(DIRECTORY
+  launch
+  config
+  test
+  DESTINATION share/${PROJECT_NAME}
+)
+
 ament_package()
