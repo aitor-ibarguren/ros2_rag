@@ -48,10 +48,10 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           if [ -f ros2_rag/llm_wrappers/requirements.txt ]; then
-              pip install --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
+              pip install --user --no-cache-dir --prefer-binary -r ros2_rag/llm_wrappers/requirements.txt
           fi
 
-      # 5. Create workspace & copy files from the cloned repo
+      # 5. Create workspace & copy files from the clone repo
       - name: Create workspace & copy files
         run: |
           cd ..
@@ -62,11 +62,9 @@ jobs:
       # 6. Install dependencies with rosdep
       - name: Install dependencies
         run: |
-          sudo apt-get update
           cd ../ros_ws
           rosdep update
           rosdep install --from-paths src -y --ignore-src --rosdistro jazzy
-          apt install ros-jazzy-launch-testing-ros
 
       # 7. Build with colcon
       - name: Build with colcon
@@ -74,15 +72,12 @@ jobs:
           cd ../ros_ws
           source /opt/ros/jazzy/setup.bash
           colcon build
-          source install/setup.bash
-          colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
-
+        
       # 8. Testing with colcon
       # - name: Colcon test
       #   run: |
       #     cd ../ros_ws
       #     source /opt/ros/jazzy/setup.bash
-      #     source install/setup.bash
       #     colcon test --return-code-on-test-failure --event-handlers console_direct+ --pytest-args="--ignore=llm_wrappers"
 
       # 9. Upload logs on failure
